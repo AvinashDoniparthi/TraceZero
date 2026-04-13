@@ -1,0 +1,3860 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TraceZero — Digital Exposure Dashboard</title>
+  <meta name="description" content="Cybersecurity digital exposure scanner and AI advice." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+
+  <style>
+    /* ── Next-Gen Design Tokens ─────────────────────────────────────────────── */
+    :root {
+      --bg: #06080d;
+      --surface: rgba(13, 17, 32, 0.6);
+      --glass: rgba(17, 24, 39, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --border: #1e2d45;
+      --border2: #243047;
+
+      /* Vibrant Palettes */
+      --cyan: #00f0ff;
+      --cyan2: #00b4d8;
+      --purple: #7c3aed;
+      --purple2: #a855f7;
+      --pink: #ff0055;
+
+      /* Severity Colors */
+      --green: #10b981;
+      --green-glow: #10b98140;
+      --yellow: #f59e0b;
+      --yellow-glow: #f59e0b40;
+      --red: #ef4444;
+      --red-glow: #ef444440;
+
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted2: #64748b;
+
+      --font: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+
+      --radius: 16px;
+      --radius-lg: 24px;
+
+      --glow-cyan: 0 0 30px rgba(0, 240, 255, 0.25);
+      --glow-purple: 0 0 30px rgba(168, 85, 247, 0.25);
+    }
+
+    /* ── Reset & Base ──────────────────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-anchor: none;
+      line-height: 1.6;
+    }
+
+    /* ── Dynamic Abstract Background ───────────────────────────────────────── */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      background: radial-gradient(circle at 15% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.1) 0%, transparent 40%);
+      pointer-events: none;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: -50vw;
+      width: 200vw;
+      height: 200vh;
+      z-index: -2;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(0, 240, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(168, 85, 247, 0.1) 1px, transparent 1px);
+      background-size: 50px 50px;
+      transform: perspective(1000px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+      transform-origin: top;
+      animation: grid-scroll 10s linear infinite;
+      mask-image: linear-gradient(to bottom, black 20%, transparent 80%);
+      -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 80%);
+    }
+
+    @keyframes grid-scroll {
+      0% {
+        transform: perspective(1000px) rotateX(60deg) translateY(0);
+      }
+
+      100% {
+        transform: perspective(1000px) rotateX(60deg) translateY(50px);
+      }
+    }
+
+    .bg-terminal {
+      position: absolute;
+      top: 100px;
+      left: 20px;
+      width: 300px;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: -1;
+      height: 60vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-align: left;
+    }
+
+    @keyframes glitch {
+      0% {
+        transform: translate(0) skew(0)
+      }
+
+      20% {
+        transform: translate(-2px, 2px) skew(-2deg)
+      }
+
+      40% {
+        transform: translate(-2px, -2px) skew(2deg)
+      }
+
+      60% {
+        transform: translate(2px, 2px) skew(-2deg)
+      }
+
+      80% {
+        transform: translate(2px, -2px) skew(2deg)
+      }
+
+      100% {
+        transform: translate(0) skew(0)
+      }
+    }
+
+    .glitch-hover:hover {
+      animation: glitch 0.2s linear infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────────── */
+    header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 20px;
+      padding: 18px 40px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(6, 8, 13, 0.5);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 960px) {
+      header {
+        grid-template-columns: 1fr auto;
+      }
+
+      .home-nav {
+        display: none !important;
+      }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      background: linear-gradient(90deg, var(--cyan), var(--purple2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .api-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: var(--glass);
+      padding: 6px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 10px var(--muted);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.online {
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.offline {
+      background: var(--red);
+      box-shadow: 0 0 12px var(--red);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* ── Container ─────────────────────────────────────────────────────────── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    /* ── Glassmorphism Utility ─────────────────────────────────────────────── */
+    .glass-panel {
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ── Hero Search Section ───────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 60px 0 20px;
+      animation: fadeUp 0.6s ease-out;
+    }
+
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.1;
+      background: linear-gradient(to right, #fff, var(--muted));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+
+    .search-box {
+      display: flex;
+      max-width: 680px;
+      margin: 0 auto;
+      background: rgba(13, 17, 32, 0.8);
+      border: 1px solid var(--cyan2);
+      border-radius: 999px;
+      padding: 8px;
+      box-shadow: var(--glow-cyan);
+      transition: all 0.3s ease;
+    }
+
+    .search-box:focus-within {
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
+      border-color: var(--cyan);
+    }
+
+    .search-box input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      padding: 16px 24px;
+    }
+
+    .search-box input::placeholder {
+      color: var(--muted2);
+    }
+
+    .search-btn {
+      background: linear-gradient(135deg, var(--cyan2), var(--purple));
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 0 32px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .search-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.5);
+    }
+
+    .quick-chips {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ── Loading State ─────────────────────────────────────────────────────── */
+    .loading-state {
+      display: none;
+      text-align: center;
+      padding: 80px 0;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ── Radar Scan Loading State ──────────────────────────────────────────── */
+    .scanner-ring {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: repeating-radial-gradient(transparent 0, transparent 15px, rgba(0, 240, 255, 0.1) 16px, transparent 16px);
+      border: 1px solid var(--cyan);
+      box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scanner-ring::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50%;
+      height: 50%;
+      background: linear-gradient(45deg, var(--cyan) 0%, transparent 100%);
+      transform-origin: 0 0;
+      animation: radar-spin 2s linear infinite;
+      clip-path: polygon(0 0, 100% 0, 100% 100%);
+      opacity: 0.5;
+    }
+
+    .scanner-ring::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(0, 0, 0, 0.1), transparent 2px);
+      background-size: 100% 4px;
+      z-index: 2;
+    }
+
+    @keyframes radar-spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Ticker Tape & Demo Mode ───────────────────────────────────────────── */
+    .threat-ticker-wrapper {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      border-top: 1px solid var(--red);
+      padding: 8px 0;
+      overflow: hidden;
+      display: flex;
+      z-index: 50;
+    }
+
+    .threat-ticker {
+      display: flex;
+      white-space: nowrap;
+      animation: ticker-slide 30s linear infinite;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      gap: 50px;
+    }
+
+    .threat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .threat-item span.hot {
+      color: var(--red);
+      font-weight: bold;
+    }
+
+    @keyframes ticker-slide {
+      0% {
+        transform: translateX(0);
+      }
+
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+
+    .demo-btn {
+      margin-top: 24px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: 10px 24px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-family: var(--font);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px var(--red-glow);
+    }
+
+    .demo-btn:hover {
+      background: var(--red);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    /* ── Interactive Floating Nodes ────────────────────────────────────────── */
+    .floating-node {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+      opacity: 0.3;
+      animation: float 10s infinite alternate ease-in-out;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0px) scale(1);
+        opacity: 0.1;
+      }
+
+      100% {
+        transform: translateY(-80px) scale(1.5);
+        opacity: 0.5;
+      }
+    }
+
+    .loading-text {
+      font-size: 1.2rem;
+      color: var(--cyan);
+      font-weight: 500;
+      letter-spacing: 1px;
+      animation: pulseText 1.5s infinite;
+    }
+
+    @keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulseText {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(40px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* ── Results Dashboard ─────────────────────────────────────────────────── */
+    .dashboard {
+      display: none;
+      animation: fadeUp 0.5s ease-out;
+    }
+
+    .dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .dash-title {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .dash-subtitle {
+      font-family: var(--mono);
+      color: var(--cyan);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Top Grid: Gauge & Summary */
+    .top-panel {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media(max-width: 800px) {
+      .top-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Modern Circular Gauge */
+    .gauge-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .svg-gauge {
+      width: 180px;
+      height: 180px;
+      position: relative;
+    }
+
+    .gauge-bg {
+      fill: none;
+      stroke: var(--border2);
+      stroke-width: 3;
+    }
+
+    .gauge-progress {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 0, 100;
+      transition: stroke-dasharray 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    .gauge-text-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .gauge-score {
+      font-size: 11px;
+      font-weight: 800;
+      font-family: var(--mono);
+      line-height: 1;
+    }
+
+    .gauge-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .severity-badge {
+      margin-top: 16px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      font-size: 0.85rem;
+    }
+
+    /* Standardized Severity Colors applied via JS */
+    .sev-high {
+      background: var(--red-glow);
+      color: var(--red);
+      border: 1px solid var(--red);
+      box-shadow: 0 0 15px var(--red-glow);
+      stroke: var(--red);
+    }
+
+    .sev-medium {
+      background: var(--yellow-glow);
+      color: var(--yellow);
+      border: 1px solid var(--yellow);
+      box-shadow: 0 0 15px var(--yellow-glow);
+      stroke: var(--yellow);
+    }
+
+    .sev-low {
+      background: var(--green-glow);
+      color: var(--green);
+      border: 1px solid var(--green);
+      box-shadow: 0 0 15px var(--green-glow);
+      stroke: var(--green);
+    }
+
+    .sev-none {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      stroke: var(--muted);
+    }
+
+    /* Summary Card */
+    .summary-card p {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .top-risks-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .risk-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .risk-tag {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      font-family: var(--mono);
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .mc-lc::before {
+      background: var(--cyan);
+    }
+
+    .mc-hunter::before {
+      background: var(--yellow);
+    }
+
+    .mc-vt::before {
+      background: var(--red);
+    }
+
+    .mc-social::before {
+      background: var(--green);
+    }
+
+    .metric-title {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      font-family: var(--mono);
+    }
+
+    .metric-sub {
+      font-size: 0.8rem;
+      color: var(--muted2);
+    }
+
+    /* Attack Surface Overview Table */
+    .attack-surface-section {
+      margin-top: 32px;
+      background: rgba(13, 17, 32, 0.4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      animation: fadeUp 0.5s ease-out;
+    }
+
+    .as-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .as-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .as-search {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 250px;
+    }
+    
+    .as-search input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-family: var(--font);
+      width: 100%;
+    }
+
+    .as-table-wrapper {
+      overflow-x: auto;
+    }
+
+    .as-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      min-width: 900px;
+    }
+
+    .as-table th {
+      color: var(--muted2);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .as-table td {
+      padding: 16px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      vertical-align: middle;
+    }
+
+    .as-row {
+      transition: background 0.2s;
+    }
+
+    .as-row:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .as-row.slide-in {
+      animation: slideInRight 0.5s ease-out forwards;
+      opacity: 0;
+    }
+
+    .as-checkbox {
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--muted2);
+      border-radius: 4px;
+      display: inline-block;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .as-name-col {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .as-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .as-icon.aws { background: rgba(255, 153, 0, 0.1); color: #ff9900; }
+    .as-icon.gcp { background: rgba(66, 133, 244, 0.1); color: #4285F4; }
+    .as-icon.azure { background: rgba(0, 164, 239, 0.1); color: #00A4EF; }
+    .as-icon.default { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+
+    .as-main-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .as-sub-text {
+      font-size: 0.75rem;
+      color: var(--muted2);
+      margin-top: 4px;
+    }
+    
+    .as-sub-text span {
+      color: var(--muted);
+    }
+
+    .as-score-td {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .as-score-bar-wrap {
+      width: 80px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .as-score-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    .as-score-text {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      width: 35px;
+    }
+
+    .as-perms {
+      display: flex;
+      gap: 6px;
+    }
+    .as-perm-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+    }
+
+    .as-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .as-action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .as-action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Actionable Suggestions */
+    .suggestions-section {
+      margin-top: 24px;
+      padding: 24px;
+      border-left: 4px solid var(--cyan);
+    }
+
+    .suggestions-section h3 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .suggestions-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .suggestions-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.95rem;
+      color: var(--muted2);
+    }
+
+    .suggestions-list li::before {
+      content: '→';
+      color: var(--cyan);
+      font-weight: bold;
+    }
+
+    /* ── Floating AI Chatbot ────────────────────────────────────────────────── */
+    .chat-fab {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan2), var(--purple));
+      color: #fff;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      z-index: 1001;
+      transition: transform 0.2s;
+    }
+
+    .chat-fab:hover {
+      transform: scale(1.1);
+    }
+
+    .chat-widget {
+      position: fixed;
+      bottom: 100px;
+      right: 30px;
+      width: 380px;
+      background: var(--surface);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.15);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      transition: opacity 0.3s, transform 0.3s;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+    }
+
+    .chat-widget.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .chat-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .chat-icon {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chat-toggle {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .chat-toggle:hover {
+      color: var(--red);
+    }
+
+    .chat-body {
+      height: 380px;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: opacity 0.3s;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      animation: fadeUp 0.2s ease;
+    }
+
+    .msg.ai {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(124, 58, 237, 0.15));
+      border: 1px solid rgba(0, 240, 255, 0.25);
+    }
+
+    .msg.think {
+      font-style: italic;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .msg-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      transition: opacity 0.3s;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-family: var(--font);
+      outline: none;
+    }
+
+    .chat-input-area input:focus {
+      border-color: var(--cyan);
+    }
+
+    .chat-input-area button {
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .chat-input-area button:hover {
+      background: var(--purple2);
+    }
+
+    .chat-input-area button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+
+      .search-box {
+        flex-direction: column;
+        border-radius: 16px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+
+      .search-box:focus-within {
+        box-shadow: none;
+      }
+
+      .search-box input {
+        background: rgba(13, 17, 32, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+
+      .search-btn {
+        padding: 16px;
+        border-radius: 8px;
+        width: 100%;
+      }
+
+      .chat-widget {
+        width: calc(100% - 40px);
+        bottom: 20px;
+        right: 20px;
+      }
+    }
+
+    /* ── Scrolling Content Sections ────────────────────────────────────────── */
+    .hero-content {
+      min-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 60px;
+    }
+
+    .scroll-down {
+      margin-top: 60px;
+      color: var(--muted2);
+      animation: bounce 2s infinite;
+      font-size: 0.9rem;
+      opacity: 0.5;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      20%,
+      50%,
+      80%,
+      100% {
+        transform: translateY(0);
+      }
+
+      40% {
+        transform: translateY(-10px);
+      }
+
+      60% {
+        transform: translateY(-5px);
+      }
+    }
+
+    .features-section {
+      padding: 40px 0 100px;
+      text-align: left;
+    }
+
+    .section-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 40px;
+      background: linear-gradient(90deg, #fff, var(--muted));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .feature-card {
+      transition: all 0.3s ease;
+      background: rgba(13, 17, 32, 0.4);
+    }
+
+    .feature-card:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+    }
+
+    .feature-card h3 {
+      color: var(--cyan);
+      margin-bottom: 12px;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-card p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .ai-showcase {
+      margin-top: 24px;
+      padding: 40px;
+      border-color: var(--purple);
+      box-shadow: 0 8px 32px rgba(168, 85, 247, 0.15);
+      text-align: center;
+      background: rgba(13, 17, 32, 0.4);
+    }
+
+    .ai-showcase h3 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      background: linear-gradient(90deg, #fff, var(--purple2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* ── Complex Content CSS ────────────────────────────────────────────────── */
+    .complex-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      margin-top: 32px;
+    }
+
+    .arch-component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .arch-component-card {
+      background: rgba(13, 17, 32, 0.5);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .arch-component-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .score-factor-row {
+      background: rgba(13, 17, 32, 0.4);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .score-bar-wrap {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      animation: barGrow 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    @keyframes barGrow {
+      from {
+        transform: scaleX(0);
+        transform-origin: left;
+      }
+
+      to {
+        transform: scaleX(1);
+        transform-origin: left;
+      }
+    }
+
+    .score-tier-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .score-tier-badge {
+      flex: 1;
+      min-width: 90px;
+      padding: 14px 10px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .complex-card {
+      background: rgba(13, 17, 32, 0.4);
+      padding: 32px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--glass-border);
+    }
+
+    .complex-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .arch-diagram {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      border: 1px dashed var(--glass-border);
+    }
+
+    .arch-node {
+      padding: 8px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--muted);
+      z-index: 2;
+    }
+
+    .arch-node.highlight {
+      border-color: var(--purple);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+    }
+
+    .arch-node.final {
+      border-color: var(--cyan);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+
+    .arch-line {
+      width: 2px;
+      height: 20px;
+      background: var(--glass-border);
+    }
+
+    .arch-subnode {
+      font-size: 0.75rem;
+      color: var(--muted2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .algo-formula {
+      font-family: var(--mono);
+      font-size: 0.9rem;
+    }
+
+    .algo-row {
+      margin-bottom: 8px;
+      color: var(--muted);
+    }
+
+    .algo-row .var {
+      color: var(--cyan2);
+    }
+
+    .algo-row.highlight-formula {
+      font-size: 1.1rem;
+      color: #fff;
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    /* WIKI STYLES */
+    .wiki-tab {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      text-align: left;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wiki-tab:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    .wiki-tab.active {
+      background: rgba(0, 240, 255, 0.1);
+      color: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: inset 4px 0 0 var(--cyan);
+    }
+
+    .wiki-pane {
+      animation: fadeUp 0.4s ease-out;
+    }
+
+    @media (max-width: 800px) {
+      .wiki-layout {
+        flex-direction: column;
+      }
+
+      .wiki-sidebar {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+      }
+
+      .wiki-tab {
+        flex: 1 1 45%;
+      }
+    }
+
+    /* ── Auth Modal ────────────────────────────────────────────────────────── */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .auth-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      font-size: 1.5rem;
+      color: var(--muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+
+    .auth-close:hover {
+      color: #fff;
+    }
+
+    .auth-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .auth-btn-google {
+      width: 100%;
+      padding: 12px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-family: var(--font);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    .auth-btn-google:hover {
+      background: #f0f0f0;
+    }
+
+    .auth-divider {
+      text-align: center;
+      margin: 20px 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      position: relative;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 35%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .auth-divider::before {
+      left: 0;
+    }
+
+    .auth-divider::after {
+      right: 0;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font);
+      margin-bottom: 16px;
+    }
+
+    .auth-btn-phone {
+      width: 100%;
+      padding: 12px;
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+
+    .auth-btn-phone:hover {
+      background: var(--purple2);
+    }
+
+    #recaptcha-container {
+      margin-bottom: 16px;
+    }
+
+    /* ── Homepage Navigation Bar (inline in header) ──────────────────── */
+    .home-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      transition: opacity 0.25s ease;
+    }
+
+    .home-nav.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 18px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      letter-spacing: 0.3px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--glass-border);
+    }
+
+    .nav-link.active {
+      color: var(--cyan);
+      background: rgba(0, 240, 255, 0.08);
+      border-color: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.12);
+    }
+
+    .nav-divider {
+      width: 1px;
+      height: 18px;
+      background: var(--glass-border);
+      margin: 0 4px;
+    }
+
+    .staggered-reveal {
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+
+    .interactive-card {
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .interactive-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at center, rgba(0, 240, 255, 0.08) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .interactive-card:hover,
+    .interactive-card.hover-active {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 240, 255, 0.3);
+      z-index: 10;
+    }
+
+    .interactive-card:hover::before,
+    .interactive-card.hover-active::before {
+      opacity: 1;
+    }
+
+    .interactive-card .expand-content {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.4s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .interactive-card .expand-content>div {
+      overflow: hidden;
+    }
+
+    .interactive-card:hover .expand-content,
+    .interactive-card.hover-active .expand-content {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      margin-top: 12px;
+    }
+
+    .hz-tooltip {
+      position: relative;
+      display: inline-block;
+      color: var(--cyan);
+      border-bottom: 1px dashed rgba(0, 240, 255, 0.5);
+      cursor: help;
+    }
+
+    .hz-tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(10, 14, 23, 0.95);
+      border: 1px solid var(--cyan);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0, 240, 255, 0.15);
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .hz-tooltip:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .card-metrics {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--glass-border);
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+
+    .metric-counter {
+      animation: pulse-glow 2s infinite alternate;
+    }
+
+    @keyframes pulse-glow {
+      from {
+        text-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+      }
+
+      to {
+        text-shadow: 0 0 15px rgba(0, 240, 255, 0.8);
+      }
+    }
+
+    /* Pipeline enhancements */
+    .pipeline-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 24px;
+    }
+
+    @media (min-width: 768px) {
+      .pipeline-wrapper {
+        flex-direction: row;
+        justify-content: space-between;
+      }
+    }
+
+    .pipeline-step {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+      cursor: crosshair;
+    }
+
+    .pipeline-wrapper:hover .pipeline-step:not(:hover) {
+      opacity: 0.4;
+      transform: scale(0.98);
+    }
+
+    .pipeline-step:hover {
+      background: rgba(168, 85, 247, 0.05);
+      border-color: var(--purple2);
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(168, 85, 247, 0.15);
+    }
+
+    .pipeline-step .pipeline-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .hover-details {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .pipeline-step:hover .hover-details {
+      max-height: 100px;
+      opacity: 1;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--glass-border);
+    }
+
+    .hover-details-inner {
+      font-size: 0.8rem;
+      color: var(--muted2);
+      line-height: 1.4;
+    }
+
+    /* Enhance architecture tooltip overlaps */
+    .arch-diagram .arch-node:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+
+    /* ── SSE Bubble Graph ────────────────────────────────────────────── */
+    @keyframes sse-pulse {
+      from { box-shadow: 0 0 20px rgba(0,240,255,0.18), inset 0 0 10px rgba(0,240,255,0.06); }
+      to   { box-shadow: 0 0 55px rgba(0,240,255,0.5),  inset 0 0 28px rgba(0,240,255,0.22); }
+    }
+
+    @keyframes sse-dash {
+      to { stroke-dashoffset: -400; }
+    }
+
+    @keyframes sse-bob1 {
+      0%,100% { transform: translate(-50%,-50%) scale(1) translateY(0);   }
+      50%      { transform: translate(-50%,-50%) scale(1) translateY(-8px); }
+    }
+    @keyframes sse-bob2 {
+      0%,100% { transform: translate(-50%,-50%) scale(1) translateY(0);  }
+      50%      { transform: translate(-50%,-50%) scale(1) translateY(8px); }
+    }
+
+    .sse-connector {
+      opacity: 0;
+      animation: sse-dash 16s linear infinite;
+      transition: opacity 0.4s ease;
+    }
+    #sse-graph.sse-exploded .sse-connector { opacity: 0.55; }
+
+    .sse-node {
+      position: absolute;
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      border: 1.5px solid var(--nc, #fff);
+      background: color-mix(in srgb, var(--nc, #fff) 7%, transparent);
+      backdrop-filter: blur(8px);
+      color: var(--nc, #fff);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--nc, #fff) 20%, transparent),
+                  inset 0 0 12px color-mix(in srgb, var(--nc, #fff) 8%, transparent);
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; font-size: 10px; font-weight: 700;
+      font-family: var(--mono);
+      padding: 12px;
+      cursor: pointer; z-index: 15;
+      opacity: 0; pointer-events: none;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) scale(0.05);
+      transition: opacity 0.45s ease,
+                  transform 0.5s cubic-bezier(0.34,1.56,0.64,1),
+                  filter 0.2s;
+    }
+    .sse-node:hover { filter: brightness(1.35); z-index: 100; }
+
+    #sse-graph.sse-exploded .sse-node {
+      opacity: 1; pointer-events: auto;
+    }
+    /* Individual node positions + bob animations */
+    /* nth-child counts from svg(1) + sse-center(2), so nodes are 3-6 */
+    #sse-graph.sse-exploded .sse-node:nth-child(3) {
+      top:18%;left:88%; transform:translate(-50%,-50%) scale(1);
+      animation: sse-bob1 4.2s ease-in-out infinite;
+    }
+    #sse-graph.sse-exploded .sse-node:nth-child(4) {
+      top:18%;left:12%; transform:translate(-50%,-50%) scale(1);
+      animation: sse-bob2 3.8s ease-in-out infinite;
+    }
+    #sse-graph.sse-exploded .sse-node:nth-child(5) {
+      top:82%;left:88%; transform:translate(-50%,-50%) scale(1);
+      animation: sse-bob1 5.0s ease-in-out infinite;
+    }
+    #sse-graph.sse-exploded .sse-node:nth-child(6) {
+      top:82%;left:12%; transform:translate(-50%,-50%) scale(1);
+      animation: sse-bob2 4.5s ease-in-out infinite;
+    }
+
+    /* Popover */
+    .sse-pop {
+      position: absolute;
+      width: 290px;
+      background: rgba(8,10,18,0.94);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 16px 18px;
+      backdrop-filter: blur(18px);
+      z-index: 300;
+      opacity: 0;
+      transform: scale(0.88) translateY(-6px);
+      transform-origin: top center;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34,1.4,0.64,1);
+      box-shadow: 0 8px 36px rgba(0,0,0,0.65);
+      /* default: opens below, aligned left */
+      top: 115%; left: 50%;
+      translate: -50% 0;
+    }
+    .sse-node:hover .sse-pop {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+    }
+    /* above variant (bottom nodes) */
+    .sse-pop.sse-pop-above {
+      top: auto; bottom: 115%;
+      transform-origin: bottom center;
+      transform: scale(0.88) translateY(6px);
+    }
+    .sse-node:hover .sse-pop.sse-pop-above {
+      transform: scale(1) translateY(0);
+    }
+    /* right anchor (left-side nodes open rightward) */
+    .sse-pop.sse-pop-right { left: 50%; translate: -20% 0; }
+
+    .sse-pop-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1px dashed rgba(255,255,255,0.12);
+    }
+    .sse-sig-row { margin-bottom: 9px; }
+    .sse-sig-lbl { font-family: var(--mono); font-size: 10px; color: #aaa; margin-bottom: 4px; }
+    .sse-bar-track {
+      width: 100%; height: 5px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px; overflow: hidden;
+    }
+    .sse-bar-fill { height: 100%; border-radius: 3px; }
+    .sse-term {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.7;
+      color: #d0d0d0;
+    }
+    .sse-band {
+      padding: 9px 12px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-bottom: 7px;
+    }
+    .sse-band:last-child { margin-bottom: 0; }
+  </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+</head>
+
+<body>
+
+  <div class="bg-animation"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-terminal" id="bg-terminal"></div>
+
+  <header>
+    <div class="logo glitch-hover" onclick="resetUI()" style="cursor: pointer;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00f0ff" />
+            <stop offset="100%" stop-color="#a855f7" />
+          </linearGradient>
+        </defs>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      <span>TraceZero</span>
+    </div>
+
+    <!-- Inline nav – aligned with the TraceZero title -->
+    <nav class="home-nav" id="home-nav">
+      <a class="nav-link" href="#section-features" id="nav-features">🛡️ Features</a>
+      <div class="nav-divider"></div>
+      <a class="nav-link" href="#section-pipeline" id="nav-pipeline">⚙️ OSINT Pipeline</a>
+      <div class="nav-divider"></div>
+      <a class="nav-link" href="#section-architecture" id="nav-arch">🗂️ Architecture</a>
+      <div class="nav-divider"></div>
+      <a class="nav-link" href="#section-scoring" id="nav-scoring">📊 Risk Scoring</a>
+      <div class="nav-divider"></div>
+      <a class="nav-link" href="#section-wiki" id="nav-wiki">📚 Intel Wiki</a>
+    </nav>
+
+    <div class="header-controls">
+      <div class="api-status" style="display:none;">
+        <div class="status-dot" id="apiDot"></div>
+        <span id="apiStatusText">Connecting...</span>
+      </div>
+      <span id="user-display" style="display:none; font-size:0.9rem; font-weight:600; color:var(--cyan);"></span>
+      <button id="auth-btn" class="btn-outline" onclick="openAuthModal()"
+        style="padding:6px 16px; font-size:0.85rem;">Login</button>
+    </div>
+  </header>
+
+  <!-- Auth Modal -->
+  <div class="auth-overlay" id="auth-overlay">
+    <div class="auth-modal">
+      <button class="auth-close" onclick="closeAuthModal()">✖</button>
+      <h2 class="auth-title">Welcome</h2>
+
+      <button class="auth-btn-google" onclick="signInWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#4285F4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34A853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#FBBC05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+          <path fill="#EA4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+        </svg>
+        Sign in with Google
+      </button>
+
+      <div class="auth-divider">OR</div>
+
+      <div id="email-auth-section" style="margin-bottom: 12px;">
+        <input type="email" id="email-input" class="auth-input" placeholder="Email address"
+          style="margin-bottom: 10px;" />
+        <input type="password" id="password-input" class="auth-input" placeholder="Password"
+          style="margin-bottom: 16px;" />
+        <div style="display: flex; gap: 10px;">
+          <button class="auth-btn-phone" onclick="signInWithEmail()" id="btn-email-login"
+            style="background:var(--cyan2); border-radius: 8px;">Login</button>
+          <button class="auth-btn-phone" onclick="signUpWithEmail()" id="btn-email-signup"
+            style="background:var(--muted2); border-radius: 8px;">Sign Up</button>
+        </div>
+      </div>
+
+
+
+      <div id="auth-error"
+        style="color: var(--red); margin-top: 16px; font-size: 0.85rem; text-align: center; min-height: 20px;"></div>
+    </div>
+  </div>
+
+  <main class="container">
+
+    <!-- Hero / Initial State -->
+    <section id="hero-section" class="hero">
+      <div class="hero-content">
+        <h1 id="hero-title" class="glitch-hover" style="font-size: 3.5rem;">Assess Your Digital Exposure</h1>
+        <p>Scan for credential leaks and social footprint instantly. Enter an email or username to calculate your risk
+          severity.</p>
+
+        <div class="search-box glitch-hover">
+          <input type="text" id="target-input" placeholder="e.g. user@example.com or hacker99"
+            onkeydown="if(event.key==='Enter') runAnalysis()" />
+          <button class="search-btn" onclick="runAnalysis()">INITIATE SCAN</button>
+        </div>
+
+        <div class="quick-chips">
+          <div class="chip" onclick="prefill('test@example.com')">test@example.com</div>
+          <div class="chip" onclick="prefill('user@gmail.com')">user@gmail.com</div>
+          <div class="chip" onclick="prefill('johndoe42')">johndoe42</div>
+        </div>
+
+        <!-- Demo button hidden & handled by secret shortcut -->
+
+        <div class="scroll-down">
+          <span style="display:block;margin-bottom:8px">Scroll to discover TraceZero capabilities</span>
+          ▼
+        </div>
+      </div>
+
+      <div class="features-section" id="section-features">
+        <h2 class="section-title">Comprehensive Attack Surface Analysis</h2>
+
+        <div class="features-grid">
+          <div class="glass-panel feature-card interactive-card staggered-reveal" data-tilt data-tilt-max="5"
+            data-tilt-speed="400" ontouchstart="this.classList.toggle('hover-active')">
+            <h3>🛡️ 13B+ Database Index</h3>
+            <p>Our integration with LeakCheck parses over 13 billion compromised records historically updated daily.</p>
+            <div class="expand-content">
+              <div>
+                <p style="margin-top: 12px; font-size: 0.9rem; color: var(--muted2);">Instantly alerting on any
+                  credential spillage relative to the target.</p>
+                <div class="card-metrics">
+                  <span style="font-size: 0.75rem; text-transform: uppercase;">Indexed Nodes: </span>
+                  <span class="metric-counter">13,421,988,111</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="glass-panel feature-card interactive-card staggered-reveal" data-tilt data-tilt-max="5"
+            data-tilt-speed="400" ontouchstart="this.classList.toggle('hover-active')">
+            <h3>📧 Deliverability Recon</h3>
+            <p>Cross-referencing Hunter.io intelligence, TraceZero audits email endpoints to identify risk.</p>
+            <div class="expand-content">
+              <div>
+                <p style="margin-top: 12px; font-size: 0.9rem; color: var(--muted2);">Filters for active, disposable, or
+                  inherently risky email patterns used by persistent threats.</p>
+                <div class="card-metrics">
+                  <span style="font-size: 0.75rem; text-transform: uppercase;">SMTP Probe Success: </span>
+                  <span class="metric-counter">99.8%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="glass-panel feature-card interactive-card staggered-reveal" data-tilt data-tilt-max="5"
+            data-tilt-speed="400" ontouchstart="this.classList.toggle('hover-active')">
+            <h3>🌐 Dark Web Domain Intel</h3>
+            <p>Leveraging the native VirusTotal API, suspicious target domains are algorithmically screened.</p>
+            <div class="expand-content">
+              <div>
+                <p style="margin-top: 12px; font-size: 0.9rem; color: var(--muted2);">Checked concurrently against a
+                  vast network of 70+ global antivirus engines and web heuristics scanners.</p>
+                <div class="card-metrics">
+                  <span style="font-size: 0.75rem; text-transform: uppercase;">AV Engines Polled: </span>
+                  <span class="metric-counter">74 Active Nodes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="glass-panel feature-card interactive-card staggered-reveal" data-tilt data-tilt-max="5"
+            data-tilt-speed="400" ontouchstart="this.classList.toggle('hover-active')">
+            <h3>🤖 AI Synthesis Engine</h3>
+            <p>Powered by Google Gemini 2.0 Flash, raw analytical telemetry is instantly interpreted.</p>
+            <div class="expand-content">
+              <div>
+                <p style="margin-top: 12px; font-size: 0.9rem; color: var(--muted2);">Complex data points are aggregated
+                  into a highly-readable conversational response with actionable triage next-steps.</p>
+                <div class="card-metrics">
+                  <span style="font-size: 0.75rem; text-transform: uppercase;">Processing Latency: </span>
+                  <span class="metric-counter">&lt; 850ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="section-pipeline" class="glass-panel ai-showcase staggered-reveal"
+          style="padding-bottom: 40px; margin-top: 60px;">
+          <h3 style="text-align: center; margin-bottom: 8px;">A Multi-Tiered OSINT Pipeline</h3>
+          <p
+            style="color:var(--muted); font-size:1.05rem; line-height: 1.6; text-align: center; max-width: 800px; margin: 0 auto;">
+            TraceZero operates by firing <strong>concurrent zero-latency probes</strong> simultaneously across external
+            APIs, achieving a state of complete <strong class="hz-tooltip"
+              data-tooltip="No tracking, no cookies, no user sessions stored across the server.">"Zero Trace"</strong>
+            analytics.</p>
+
+          <div class="pipeline-wrapper">
+            <div class="pipeline-step">
+              <div class="pipeline-icon">🌍</div>
+              <h4>1. Data Aggregation</h4>
+              <p>Simultaneous async requests fired to public data silos.</p>
+              <div class="hover-details">
+                <div class="hover-details-inner">
+                  Runs <code>asyncio.gather()</code> across VirusTotal, Hunter, and tools without blocking the event
+                  loop.
+                </div>
+              </div>
+            </div>
+            <div class="pipeline-step">
+              <div class="pipeline-icon">🧠</div>
+              <h4>2. Risk Normalization</h4>
+              <p>Raw threat indicators are weighted dynamically.</p>
+              <div class="hover-details">
+                <div class="hover-details-inner">
+                  Factors like <i>Credential Breaches</i> receive a 0.8x weight multiplier versus <i>Malicious Flags</i>
+                  (0.9x).
+                </div>
+              </div>
+            </div>
+            <div class="pipeline-step">
+              <div class="pipeline-icon">📊</div>
+              <h4>3. AI Synthesis</h4>
+              <p>Gemini LLM transforms JSON into human triage advice.</p>
+              <div class="hover-details">
+                <div class="hover-details-inner">
+                  System prompt enforces output limits to prevent hallucination, ensuring strict, actionable security
+                  protocols.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="complex-grid">
+
+        <!-- ── Architecture Card ─────────────────────────────────────── -->
+        <div id="section-architecture" class="glass-panel complex-card">
+          <h3 style="color:var(--cyan);font-size:1.6rem;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="8" rx="2"></rect>
+              <rect x="2" y="14" width="20" height="8" rx="2"></rect>
+              <line x1="6" y1="6" x2="6.01" y2="6"></line>
+              <line x1="6" y1="18" x2="6.01" y2="18"></line>
+            </svg>
+            System Architecture
+          </h3>
+          <p style="color:var(--muted);font-size:0.95rem;margin-bottom:28px;line-height:1.6;">TraceZero is built on a
+            fully stateless, async-first pipeline — every component is independently replaceable, horizontally scalable,
+            and zero-persistence by design.</p>
+
+          <!-- System Components -->
+          <div
+            style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);margin-bottom:12px;font-weight:600;">
+            System Components</div>
+          <div class="arch-component-grid">
+            <div class="arch-component-card" style="border-top:3px solid var(--cyan);">
+              <div style="font-size:1.5rem;margin-bottom:8px;">🖥️</div>
+              <div style="font-weight:700;color:#fff;font-size:0.95rem;margin-bottom:6px;">Frontend</div>
+              <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">Vanilla HTML/CSS/JS SPA. Glassmorphic UI
+                with Web Audio API, zero framework overhead. Fully stateless client rendering.</div>
+            </div>
+            <div class="arch-component-card" style="border-top:3px solid var(--purple2);">
+              <div style="font-size:1.5rem;margin-bottom:8px;">⚡</div>
+              <div style="font-weight:700;color:#fff;font-size:0.95rem;margin-bottom:6px;">Backend</div>
+              <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">FastAPI (Python) async server. <code
+                  style="color:var(--cyan2);">asyncio.gather()</code> fires all API calls concurrently, reducing total
+                latency to the slowest single probe.</div>
+            </div>
+            <div class="arch-component-card" style="border-top:3px solid var(--yellow);">
+              <div style="font-size:1.5rem;margin-bottom:8px;">🔌</div>
+              <div style="font-weight:700;color:#fff;font-size:0.95rem;margin-bottom:6px;">Intelligence APIs</div>
+              <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">LeakCheck, Hunter.io, VirusTotal, Google
+                Search. Each connector is an isolated async module — new sources plug in without refactoring core logic.
+              </div>
+            </div>
+            <div class="arch-component-card" style="border-top:3px solid var(--green);">
+              <div style="font-size:1.5rem;margin-bottom:8px;">🔒</div>
+              <div style="font-weight:700;color:#fff;font-size:0.95rem;margin-bottom:6px;">Auth &amp; Security</div>
+              <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">Firebase Auth (Google, Email, Phone). No
+                queries are persisted — all analysis data is ephemeral in-memory. Zero trace by architecture.</div>
+            </div>
+          </div>
+
+          <!-- Data Flow -->
+          <div
+            style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);margin-bottom:12px;font-weight:600;">
+            Request Data Flow</div>
+          <div class="arch-diagram">
+            <div class="arch-node"
+              style="background:rgba(0,240,255,0.06);border-color:var(--cyan);color:#fff;font-weight:600;">📥 User Input
+              — email or username</div>
+            <div class="arch-line"></div>
+            <div class="arch-node">Input Validation &amp; Type Detection</div>
+            <div class="arch-line"></div>
+            <div class="arch-split" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+              <span class="arch-subnode">🔑 LeakCheck</span>
+              <span class="arch-subnode">📧 Hunter.io</span>
+              <span class="arch-subnode">🌐 VirusTotal</span>
+              <span class="arch-subnode">👤 Social Graph</span>
+            </div>
+            <div style="font-size:0.72rem;color:var(--muted2);font-style:italic;margin:2px 0;">← concurrent asyncio
+              probes, zero blocking →</div>
+            <div class="arch-line"></div>
+            <div class="arch-node">Response Aggregation &amp; Normalization</div>
+            <div class="arch-line"></div>
+            <div class="arch-node highlight">🤖 Gemini 2.0 Flash — AI Risk Synthesis</div>
+            <div class="arch-line"></div>
+            <div class="arch-node final">📊 Unified Risk Dashboard</div>
+          </div>
+
+          <!-- Scalability + Modularity -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px;">
+            <div
+              style="padding:14px;background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.12);border-radius:10px;">
+              <div style="color:var(--cyan);font-weight:700;font-size:0.85rem;margin-bottom:6px;">⚖️ Scalability</div>
+              <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">Stateless backend scales horizontally.
+                Async non-blocking I/O ensures sub-second P95 latency. Each request is fully independent.</div>
+            </div>
+            <div
+              style="padding:14px;background:rgba(168,85,247,0.04);border:1px solid rgba(168,85,247,0.12);border-radius:10px;">
+              <div style="color:var(--purple2);font-weight:700;font-size:0.85rem;margin-bottom:6px;">🧩 Modularity</div>
+              <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">Plug-in API architecture. New
+                intelligence nodes can be added by implementing a single async interface — no changes to core pipeline.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Risk Scoring Card ───────────────────────────────────────── -->
+        <div id="section-scoring" class="glass-panel complex-card">
+          <h3 style="color:var(--purple2);font-size:1.6rem;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            Severity Scoring Engine
+          </h3>
+          <p style="color:var(--muted);font-size:0.95rem;margin-bottom:24px;line-height:1.6;">Risk scores are computed
+            via a multi-factor weighted model. Each signal is independently normalised before aggregation — preventing
+            any single data source from dominating the result.</p>
+
+          <!-- Interactive Engine Map label -->
+          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);margin-bottom:16px;font-weight:600;">
+            Interactive Engine Map — hover center to expand</div>
+
+          <!-- ── Bubble Graph ── -->
+          <div id="sse-graph" style="position:relative;width:100%;height:420px;margin-bottom:28px;overflow:visible;">
+
+            <!-- SVG connector lines -->
+            <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible;">
+              <line class="sse-connector" x1="50%" y1="50%" x2="88%" y2="18%" stroke="#ff3355" stroke-width="1.5" stroke-dasharray="7 5" fill="none" />
+              <line class="sse-connector" x1="50%" y1="50%" x2="12%" y2="18%" stroke="#ffcc00" stroke-width="1.5" stroke-dasharray="7 5" fill="none" />
+              <line class="sse-connector" x1="50%" y1="50%" x2="88%" y2="82%" stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="7 5" fill="none" />
+              <line class="sse-connector" x1="50%" y1="50%" x2="12%" y2="82%" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="7 5" fill="none" />
+            </svg>
+
+            <!-- Center Bubble -->
+            <div id="sse-center" style="
+              position:absolute;top:50%;left:50%;
+              transform:translate(-50%,-50%);
+              width:155px;height:155px;border-radius:50%;
+              border:2px solid #00f0ff;
+              background:rgba(0,240,255,0.05);
+              backdrop-filter:blur(10px);
+              display:flex;flex-direction:column;
+              justify-content:center;align-items:center;
+              text-align:center;padding:16px;
+              cursor:default;z-index:20;
+              box-shadow:0 0 30px rgba(0,240,255,0.2),inset 0 0 18px rgba(0,240,255,0.08);
+              animation:sse-pulse 3s ease-in-out infinite alternate;
+            ">
+              <div style="font-size:12px;font-weight:700;color:#fff;font-family:var(--mono);text-shadow:0 0 6px #00f0ff;line-height:1.4;margin-bottom:8px;">
+                Severity<br>Scoring Engine
+              </div>
+              <div style="font-size:8px;color:#00f0ff;opacity:0.8;font-family:var(--mono);line-height:1.8;letter-spacing:0.5px;">
+                OSINT.FUSION // ACTIVE<br>
+                <span style="color:#7c3aed;font-size:7px;">▸ MULTI-SRC WEIGHT NORM</span>
+              </div>
+            </div>
+
+            <!-- Node 1: top-right — red: Input Signal Weight Matrices -->
+            <div class="sse-node" style="--nc:#ff3355;top:18%;left:88%;">
+              ⚡ Input Signal<br>Weight Matrices
+              <div class="sse-pop">
+                <div class="sse-pop-title" style="color:#ff3355;">Input Signal Weight Matrices</div>
+                <div class="sse-sig-row"><div class="sse-sig-lbl">[SIGNAL_ALPHA] Breaches ×0.80</div><div class="sse-bar-track"><div class="sse-bar-fill" style="width:80%;background:#ff3355;box-shadow:0 0 6px #ff3355;"></div></div></div>
+                <div class="sse-sig-row"><div class="sse-sig-lbl">[SIGNAL_BETA] Domain Flags ×0.90</div><div class="sse-bar-track"><div class="sse-bar-fill" style="width:90%;background:#ff6b35;box-shadow:0 0 6px #ff6b35;"></div></div></div>
+                <div class="sse-sig-row"><div class="sse-sig-lbl">[SIGNAL_GAMMA] SMTP Risk ×0.50</div><div class="sse-bar-track"><div class="sse-bar-fill" style="width:50%;background:#00ff88;box-shadow:0 0 6px #00ff88;"></div></div></div>
+                <div class="sse-sig-row"><div class="sse-sig-lbl">[SIGNAL_DELTA] Social Dorks ×0.35</div><div class="sse-bar-track"><div class="sse-bar-fill" style="width:35%;background:#00f0ff;box-shadow:0 0 6px #00f0ff;"></div></div></div>
+              </div>
+            </div>
+
+            <!-- Node 2: top-left — yellow: Classification Threshold Logic -->
+            <div class="sse-node" style="--nc:#ffcc00;top:18%;left:12%;">
+              🎯 Classification<br>Threshold Logic
+              <div class="sse-pop sse-pop-right">
+                <div class="sse-pop-title" style="color:#ffcc00;">Classification Threshold Logic</div>
+                <div class="sse-band" style="background:rgba(255,51,85,0.1);border-left:3px solid #ff3355;"><span style="color:#ff3355;font-weight:700;">CRITICAL</span>&nbsp; ≥ 65 SCORE</div>
+                <div class="sse-band" style="background:rgba(255,107,53,0.1);border-left:3px solid #ff6b35;"><span style="color:#ff6b35;font-weight:700;">ELEVATED</span>&nbsp; 30–64 SCORE</div>
+                <div class="sse-band" style="background:rgba(0,255,136,0.1);border-left:3px solid #00ff88;"><span style="color:#00ff88;font-weight:700;">NOMINAL</span>&nbsp; 0–29 SCORE</div>
+              </div>
+            </div>
+
+            <!-- Node 3: bottom-right — orange: Internal Aggregation Logic -->
+            <div class="sse-node" style="--nc:#ff6b35;top:82%;left:88%;">
+              🔢 Internal<br>Aggregation Logic
+              <div class="sse-pop sse-pop-above">
+                <div class="sse-pop-title" style="color:#ff6b35;">Internal Aggregation Logic</div>
+                <div class="sse-term">
+                  <span style="color:#00f0ff;">let</span> W₁ = trace.normalize_signal(val_br) * <span style="color:#ff6b35;">0.80</span><br>
+                  <span style="color:#00f0ff;">let</span> W₂ = trace.normalize_signal(val_vt) * <span style="color:#ff6b35;">0.90</span><br>
+                  <span style="color:#00f0ff;">let</span> W₃ = trace.normalize_signal(val_em) * <span style="color:#ff6b35;">0.50</span><br>
+                  <span style="color:#00f0ff;">let</span> W₄ = trace.normalize_signal(val_so) * <span style="color:#ff6b35;">0.35</span><br><br>
+                  <span style="color:#00f0ff;">const</span> finalScore = Math.clamp(Σ(Wₙ) / βnorm × <span style="color:#ff6b35;">100</span>)<br><br>
+                  <span style="color:#7c3aed;">// βnorm recalculated per-query<br>// to prevent outlier saturation.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Node 4: bottom-left — green: Live Telemetry Drilldown -->
+            <div class="sse-node" style="--nc:#00ff88;top:82%;left:12%;">
+              📡 Live Telemetry<br>Drilldown
+              <div class="sse-pop sse-pop-above sse-pop-right">
+                <div class="sse-pop-title" style="color:#00ff88;">Live Telemetry Drilldown</div>
+                <div class="sse-term">
+                  &gt; QUERY DOMAIN: <span style="color:#00f0ff;">user@target.net</span><br><br>
+                  SIG_A = 14 bre &nbsp;→ W₁: <span style="color:#00ff88;">0.56</span><br>
+                  SIG_B = 3 vt &nbsp;&nbsp;&nbsp;→ W₂: <span style="color:#00ff88;">0.27</span><br>
+                  SIG_C = disp &nbsp;&nbsp;&nbsp;→ W₃: <span style="color:#00ff88;">0.50</span><br>
+                  SIG_D = 8 dks &nbsp;→ W₄: <span style="color:#00ff88;">0.21</span><br><br>
+                  <strong style="color:#ff3355;">Σ(1.54) ÷ β(1.9) = 81/100</strong>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /sse-graph -->
+
+          <!-- Tier badges -->
+          <div class="score-tier-row">
+            <div class="score-tier-badge" style="background:var(--red-glow);border:1px solid var(--red);">
+              <div style="color:var(--red);font-weight:800;font-size:1.1rem;margin-bottom:4px;">HIGH</div>
+              <div style="font-family:var(--mono);font-size:0.82rem;color:var(--muted);">Score &ge; 65</div>
+            </div>
+            <div class="score-tier-badge" style="background:var(--yellow-glow);border:1px solid var(--yellow);">
+              <div style="color:var(--yellow);font-weight:800;font-size:1.1rem;margin-bottom:4px;">MEDIUM</div>
+              <div style="font-family:var(--mono);font-size:0.82rem;color:var(--muted);">30 – 64</div>
+            </div>
+            <div class="score-tier-badge" style="background:var(--green-glow);border:1px solid var(--green);">
+              <div style="color:var(--green);font-weight:800;font-size:1.1rem;margin-bottom:4px;">LOW</div>
+              <div style="font-family:var(--mono);font-size:0.82rem;color:var(--muted);">0 – 29</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Cyber Intelligence Wiki Hub -->
+      <style>
+        .wiki-hub {
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(168, 85, 247, 0.05) !important;
+        }
+        .wiki-sidebar {
+          position: sticky;
+          top: 100px;
+        }
+        .wiki-tab {
+          padding: 14px 20px !important;
+          font-size: 1.05rem !important;
+          border-radius: 12px !important;
+          border-color: transparent !important;
+        }
+        .wiki-tab.active {
+          background: rgba(255, 255, 255, 0.05) !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+          box-shadow: none !important;
+        }
+        .wiki-content-area {
+          box-shadow: inset 0 0 30px rgba(0,0,0,0.4) !important;
+          min-height: 520px;
+        }
+        .wiki-interactive-row:hover {
+          transform: translateX(6px);
+          background: rgba(0, 240, 255, 0.05) !important;
+          border-color: rgba(0, 240, 255, 0.2) !important;
+        }
+        .step-circle {
+          transition: transform 0.3s;
+        }
+        .step-circle:hover {
+          transform: scale(1.1);
+        }
+      </style>
+      <div id="section-wiki" class="wiki-hub glass-panel"
+        style="margin-top: 60px; padding: 40px; background: rgba(6, 8, 13, 0.7); border: 1px solid var(--border); border-radius: var(--radius-lg); position: relative; overflow: hidden;">
+        <!-- Decorative BGs -->
+        <div style="position:absolute; top:-100px; right:-50px; width:300px; height:300px; background:var(--purple); filter:blur(120px); opacity:0.15; z-index:0; pointer-events:none;"></div>
+        <div style="position:absolute; bottom:-100px; left:-50px; width:300px; height:300px; background:var(--cyan); filter:blur(120px); opacity:0.1; z-index:0; pointer-events:none;"></div>
+
+        <div style="position:relative; z-index: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid var(--border2); padding-bottom: 20px;">
+            <div>
+              <div style="font-family: var(--mono); color: var(--cyan); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">Knowledge Base v2.4</div>
+              <h3 style="font-size: 2.5rem; font-weight: 800; line-height: 1.1; background: linear-gradient(90deg, #fff, var(--cyan)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                TraceZero Intelligence Wiki
+              </h3>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span class="api-status" style="background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:var(--green);"><div class="status-dot online"></div>Data Synced</span>
+            </div>
+          </div>
+
+          <div class="wiki-layout" style="display: flex; gap: 40px; align-items: flex-start;">
+            <!-- Wiki Sidebar -->
+            <div class="wiki-sidebar" style="flex: 0 0 280px; display: flex; flex-direction: column; gap: 8px;">
+              <button class="wiki-tab active" onclick="openWikiTab(event, 'wiki-zero-trust')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(0,240,255,0.1); display:flex; align-items:center; justify-content:center; color:var(--cyan); font-size:0.9rem;">🔒</span>
+                  Zero-Trust Architecture
+                </span>
+              </button>
+              <button class="wiki-tab" onclick="openWikiTab(event, 'wiki-osint')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(168,85,247,0.1); display:flex; align-items:center; justify-content:center; color:var(--purple2); font-size:0.9rem;">🌍</span>
+                  OSINT & Footprinting
+                </span>
+              </button>
+              <button class="wiki-tab" onclick="openWikiTab(event, 'wiki-darkweb')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; color:var(--red); font-size:0.9rem;">🕸️</span>
+                  Dark Web Markets
+                </span>
+              </button>
+              <button class="wiki-tab" onclick="openWikiTab(event, 'wiki-apts')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(245,158,11,0.1); display:flex; align-items:center; justify-content:center; color:var(--yellow); font-size:0.9rem;">🎯</span>
+                  Persistent Threats
+                </span>
+              </button>
+              <button class="wiki-tab" onclick="openWikiTab(event, 'wiki-cryptography')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(16,185,129,0.1); display:flex; align-items:center; justify-content:center; color:var(--green); font-size:0.9rem;">🔐</span>
+                  Cryptographic Hashing
+                </span>
+              </button>
+              <button class="wiki-tab" onclick="openWikiTab(event, 'wiki-cspm')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(0,240,255,0.1); display:flex; align-items:center; justify-content:center; color:var(--cyan); font-size:0.9rem;">☁️</span>
+                  Cloud Security (CSPM)
+                </span>
+              </button>
+              <button class="wiki-tab" onclick="openWikiTab(event, 'wiki-soceng')">
+                <span style="display:flex; align-items:center; gap:12px;">
+                  <span style="width:28px; height:28px; border-radius:6px; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; color:var(--red); font-size:0.9rem;">🎣</span>
+                  Social Engineering
+                </span>
+              </button>
+            </div>
+
+            <!-- Wiki Content Area -->
+            <div class="wiki-content-area" style="flex: 1; padding: 40px; background: rgba(13, 17, 32, 0.5); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+
+              <!-- Tab 1: Zero Trust -->
+              <div id="wiki-zero-trust" class="wiki-pane active">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+                  <div>
+                    <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Zero-Trust Architecture (ZTA)</h4>
+                    <p style="color: var(--muted); font-size: 1.1rem; max-width:600px;">A security framework requiring strict identity verification for every person and device trying to access resources on a private network, regardless of whether they are sitting within or outside of the network perimeter.</p>
+                  </div>
+                  <div style="background:rgba(0,240,255,0.1); color:var(--cyan); padding:8px 16px; border-radius:999px; font-weight:700; font-size:0.85rem; border:1px solid rgba(0,240,255,0.3);">CONFIDENCE: HIGH</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:30px;">
+                  <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border2); padding:20px; border-radius:12px; transition:transform 0.2s;">
+                    <div style="color:var(--cyan); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px;"><span>🛡️</span> Identity as the Perimeter</div>
+                    <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">Continuous authentication ensures that identity and device posture are validated continuously, preventing lateral movement post-breach.</p>
+                  </div>
+                  <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border2); padding:20px; border-radius:12px; transition:transform 0.2s;">
+                    <div style="color:var(--purple2); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px;"><span>✂️</span> Microsegmentation</div>
+                    <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">Dividing perimeters into small zones to maintain separate access for separate parts of the network, preventing unauthorized access expansion.</p>
+                  </div>
+                </div>
+
+                <div style="background:rgba(255,255,255,0.02); padding:24px; border-radius:12px; margin-bottom:30px; border:1px solid var(--border2); display:flex; gap:24px; align-items:center;">
+                  <div style="flex:1;">
+                    <h5 style="color:var(--yellow); font-size:1.1rem; margin-bottom:8px;">Continuous Device Posture Validation</h5>
+                    <p style="color:var(--muted); font-size:0.95rem; line-height:1.6;">Before a session is granted, the identity proxy checks the telemetry of the requesting device in real-time. If an employee logs in from an unrecognized endpoint lacking the company's EDR (Endpoint Detection and Response) agent, the connection is instantly severed regardless of password validity.</p>
+                  </div>
+                  <div style="flex:0 0 120px; text-align:center;">
+                    <div style="font-size:2.5rem; margin-bottom:10px;">🛡️</div>
+                    <div style="font-family:var(--mono); color:var(--cyan); font-size:0.8rem; font-weight:bold; letter-spacing:1px;">EDR CHECK<br><span style="color:var(--green);">PASS</span></div>
+                  </div>
+                </div>
+
+                <!-- Interactive Auth Terminal -->
+                <div style="background:#0a0d16; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                  <div style="background:#151c2e; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border);">
+                    <div style="display:flex; gap:6px;">
+                      <div style="width:12px; height:12px; border-radius:50%; background:#ef4444;"></div>
+                      <div style="width:12px; height:12px; border-radius:50%; background:#f59e0b;"></div>
+                      <div style="width:12px; height:12px; border-radius:50%; background:#10b981;"></div>
+                    </div>
+                    <div style="font-family:var(--mono); color:var(--muted); font-size:0.8rem; letter-spacing:1px;">auth.policy.rego</div>
+                    <div></div>
+                  </div>
+                  <div style="padding:24px; font-family:var(--mono); font-size:0.95rem; line-height:1.6; color:#e2e8f0; overflow-x:auto;">
+                    <span style="color:#a855f7;">package</span> tracezero.authz<br><br>
+                    <span style="color:#a855f7;">default</span> allow = <span style="color:#ef4444;">false</span><br><br>
+                    <span style="color:#00f0ff;">allow</span> {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;input.user.role == <span style="color:#10b981;">"engineer"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;input.request.method == <span style="color:#10b981;">"POST"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;input.device.status == <span style="color:#10b981;">"managed"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;input.context.risk_score < <span style="color:#f59e0b;">30</span><br>
+                    }<br><br>
+                    <span style="color:var(--muted2);">// Policy evaluation triggered dynamically on EVERY access request.</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 2: OSINT -->
+              <div id="wiki-osint" class="wiki-pane" style="display:none;">
+                <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Open-Source Intelligence (OSINT)</h4>
+                <p style="color: var(--muted); font-size: 1.1rem; margin-bottom:30px;">The collection and analysis of data gathered from open sources to produce actionable intelligence. It's the critical first phase of both ethical penetration testing and malicious attacks.</p>
+
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                  <div class="wiki-interactive-row" style="display:flex; align-items:center; gap:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border); transition:all 0.3s; cursor:pointer;">
+                    <div style="font-size:1.8rem; width:65px; height:65px; background:rgba(0,240,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--cyan); border:1px dashed var(--cyan);">🔍</div>
+                    <div style="flex:1;">
+                      <h5 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">Google Dorking (GHDB)</h5>
+                      <p style="color:var(--muted); font-size:0.95rem; margin-bottom:12px; line-height:1.5;">Using advanced search operators to find vulnerabilities hidden in plain sight, such as exposed configuration files.</p>
+                      <code style="background:rgba(255,255,255,0.05); border:1px solid var(--border2); padding:6px 12px; border-radius:6px; font-family:var(--mono); font-size:0.85rem; color:var(--cyan2); display:inline-block;">site:target.com ext:env "DB_PASSWORD"</code>
+                    </div>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="display:flex; align-items:center; gap:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border); transition:all 0.3s; cursor:pointer;">
+                    <div style="font-size:1.8rem; width:65px; height:65px; background:rgba(168,85,247,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--purple2); border:1px dashed var(--purple2);">🌐</div>
+                    <div style="flex:1;">
+                      <h5 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">DNS & Certificate Harvesting</h5>
+                      <p style="color:var(--muted); font-size:0.95rem; margin-bottom:12px; line-height:1.5;">Scanning Certificate Transparency (CT) logs to discover forgotten internal subdomains and unpatched staging environments.</p>
+                      <code style="background:rgba(255,255,255,0.05); border:1px solid var(--border2); padding:6px 12px; border-radius:6px; font-family:var(--mono); font-size:0.85rem; color:var(--purple2); display:inline-block;">crt.sh / amass enum -d target.com</code>
+                    </div>
+                  </div>
+
+                  <div class="wiki-interactive-row" style="display:flex; align-items:center; gap:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border); transition:all 0.3s; cursor:pointer;">
+                    <div style="font-size:1.8rem; width:65px; height:65px; background:rgba(239,68,68,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--red); border:1px dashed var(--red);">🎯</div>
+                    <div style="flex:1;">
+                      <h5 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">Social Footprinting</h5>
+                      <p style="color:var(--muted); font-size:0.95rem; line-height:1.5;">Mapping organizational hierarchies on LinkedIn to identify high-value targets (executives, HR, contractors) for spear-phishing campaigns tailored to company structure.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 3: Dark Web -->
+              <div id="wiki-darkweb" class="wiki-pane" style="display:none;">
+                <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Dark Web & Credential Markets</h4>
+                <p style="color: var(--muted); font-size: 1.1rem; margin-bottom:32px;">Anonymized overlay networks where Initial Access Brokers (IABs) and threat actors trade exfiltrated corporate data securely.</p>
+                
+                <h5 style="color:var(--red); font-size:0.9rem; text-transform:uppercase; letter-spacing:2px; margin-bottom:24px; font-weight:800;">The Credential Exfiltration Lifecycle</h5>
+                
+                <div style="display:flex; justify-content:space-between; margin-bottom:48px; position:relative;">
+                  <div style="position:absolute; top:35px; left:50px; right:50px; height:2px; background:var(--glass-border); z-index:0;"></div>
+                  
+                  <div style="display:flex; flex-direction:column; align-items:center; z-index:1; width:90px;" class="step-circle">
+                    <div style="width:70px; height:70px; border-radius:50%; background:var(--surface); border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:12px; box-shadow:0 0 20px rgba(239,68,68,0.3);">💾</div>
+                    <div style="font-size:0.85rem; font-weight:800; color:#fff; text-align:center; margin-bottom:4px; letter-spacing:1px;">DUMP</div>
+                    <div style="font-size:0.75rem; color:var(--muted); text-align:center;">SQLi Extraction</div>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; align-items:center; z-index:1; width:90px;" class="step-circle">
+                    <div style="width:70px; height:70px; border-radius:50%; background:var(--surface); border:2px solid var(--yellow); display:flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:12px; box-shadow:0 0 20px rgba(245,158,11,0.3);">⚡</div>
+                    <div style="font-size:0.85rem; font-weight:800; color:#fff; text-align:center; margin-bottom:4px; letter-spacing:1px;">CRACK</div>
+                    <div style="font-size:0.75rem; color:var(--muted); text-align:center;">GPU Hashcat</div>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; align-items:center; z-index:1; width:90px;" class="step-circle">
+                    <div style="width:70px; height:70px; border-radius:50%; background:var(--surface); border:2px solid var(--purple2); display:flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:12px; box-shadow:0 0 20px rgba(168,85,247,0.3);">🛒</div>
+                    <div style="font-size:0.85rem; font-weight:800; color:#fff; text-align:center; margin-bottom:4px; letter-spacing:1px;">SELL</div>
+                    <div style="font-size:0.75rem; color:var(--muted); text-align:center;">Dark Forums</div>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; align-items:center; z-index:1; width:90px;" class="step-circle">
+                    <div style="width:70px; height:70px; border-radius:50%; background:var(--surface); border:2px solid var(--cyan); display:flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:12px; box-shadow:0 0 20px rgba(0,240,255,0.3);">🦠</div>
+                    <div style="font-size:0.85rem; font-weight:800; color:#fff; text-align:center; margin-bottom:4px; letter-spacing:1px;">STUFF</div>
+                    <div style="font-size:0.75rem; color:var(--muted); text-align:center;">Botnet Spraying</div>
+                  </div>
+                </div>
+
+                <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:12px; padding:24px;">
+                  <h5 style="color:var(--cyan); font-size:1.1rem; margin-bottom:16px;">Market Economy (Estimated Values)</h5>
+                  <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+                    <tr style="border-bottom:1px solid var(--border2);">
+                      <th style="text-align:left; padding:12px; color:var(--muted); font-weight:600;">Asset Type</th>
+                      <th style="text-align:right; padding:12px; color:var(--muted); font-weight:600;">Value on Market</th>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border2); background:rgba(255,255,255,0.01);">
+                      <td style="padding:16px 12px; color:#fff; display:flex; align-items:center; gap:10px;"><span style="color:var(--red);">🔴</span> SSO Corporate Account (Valid)</td>
+                      <td style="text-align:right; padding:16px 12px; font-family:var(--mono); color:var(--red); font-weight:bold;">$1,500 - $3,000</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border2);">
+                      <td style="padding:16px 12px; color:#fff; display:flex; align-items:center; gap:10px;"><span style="color:var(--yellow);">🟡</span> Standard Email/Pass Combo</td>
+                      <td style="text-align:right; padding:16px 12px; font-family:var(--mono); color:var(--yellow); font-weight:bold;">$0.50 - $2.00</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:16px 12px; color:#fff; display:flex; align-items:center; gap:10px;"><span style="color:var(--purple2);">🟣</span> Full Database Dump (Uncracked)</td>
+                      <td style="text-align:right; padding:16px 12px; font-family:var(--mono); color:var(--purple2); font-weight:bold;">$500 - $25,000+</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div style="margin-top:30px; background:rgba(239,68,68,0.03); border-left:4px solid var(--red); padding:20px 24px; border-radius:0 12px 12px 0;">
+                  <h5 style="color:#fff; font-size:1.1rem; margin-bottom:8px; display:flex; align-items:center; gap:10px;"><span style="color:var(--red);">💬</span> Underground Syndicate Communications</h5>
+                  <p style="color:var(--muted); font-size:0.95rem; line-height:1.6; margin-bottom:12px;">Data broker transactions frequently circumvent standard web forums via encrypted peer-to-peer relay protocols to avoid Law Enforcement (LE) honeypots.</p>
+                  <ul style="color:var(--muted); font-size:0.95rem; line-height:1.6; padding-left:20px; list-style-type:square;">
+                    <li><strong style="color:var(--cyan);">Jabber/XMPP with OTR:</strong> The standard decentralized messaging backend for dark web negotiations.</li>
+                    <li><strong style="color:var(--purple2);">Tox & Session:</strong> Blockchain-routed, onion-routed instant messengers leaving no central server logs.</li>
+                    <li><strong style="color:var(--yellow);">PGP Key Custody:</strong> Verifying vendor reputation and establishing trustlessly escrowed financial transits.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Tab 4: APTs -->
+              <div id="wiki-apts" class="wiki-pane" style="display:none;">
+                <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Advanced Persistent Threats (APTs)</h4>
+                <p style="color: var(--muted); font-size: 1.1rem; margin-bottom:24px;">Stealthy, continuous cybersecurity threat processes, often orchestrated by nation-state actors holding long-term objectives over immediate financial gain.</p>
+
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  <div class="wiki-interactive-row" style="padding:24px; border-left:4px solid var(--cyan); background:rgba(0,240,255,0.05); border-radius:0 8px 8px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      <span style="font-family:var(--mono); color:var(--cyan); font-weight:800; font-size:1.2rem;">01</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Reconnaissance & Weaponization</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:0.95rem; margin-left:36px; line-height:1.6;">Deep OSINT gathering to profile employees. Malware payload is tailored explicitly to bypass the target's known endpoint detection variants.</p>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="padding:24px; border-left:4px solid var(--purple2); background:rgba(168,85,247,0.05); border-radius:0 8px 8px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      <span style="font-family:var(--mono); color:var(--purple2); font-weight:800; font-size:1.2rem;">02</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Delivery & Exploitation</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:0.95rem; margin-left:36px; line-height:1.6;">Payload delivered via spear-phishing or strategic web compromises (watering hole attacks). A zero-day vulnerability is executed locally.</p>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="padding:24px; border-left:4px solid var(--red); background:rgba(239,68,68,0.05); border-radius:0 8px 8px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      <span style="font-family:var(--mono); color:var(--red); font-weight:800; font-size:1.2rem;">03</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Command & Control (C2)</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:0.95rem; margin-left:36px; line-height:1.6;">The implanted malware beacons out establishing an encrypted tunnel. The threat actor now has absolute hands-on-keyboard access to the internal network.</p>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="padding:24px; border-left:4px solid var(--yellow); background:rgba(245,158,11,0.05); border-radius:0 8px 8px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      <span style="font-family:var(--mono); color:var(--yellow); font-weight:800; font-size:1.2rem;">04</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Lateral Movement & Exfiltration</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:0.95rem; margin-left:36px; line-height:1.6;">Actors quietly escalate privileges (e.g., extracting Kerberos tickets), move to critical tier-0 servers, and siphon classified IP out of the network.</p>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="padding:24px; border-left:4px solid var(--green); background:rgba(16,185,129,0.05); border-radius:0 8px 8px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      <span style="font-family:var(--mono); color:var(--green); font-weight:800; font-size:1.2rem;">05</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Establish Persistence</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:0.95rem; margin-left:36px; line-height:1.6;">The APT modifies registry keys, schedules hidden system tasks, or compromises firmware (bootkits) to ensure the malware survives endpoint reboots or basic antivirus sweeps.</p>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="padding:24px; border-left:4px solid #fff; background:rgba(255,255,255,0.05); border-radius:0 8px 8px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      <span style="font-family:var(--mono); color:#fff; font-weight:800; font-size:1.2rem;">06</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Cover Tracks (Log Wiping)</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:0.95rem; margin-left:36px; line-height:1.6;">Once objectives are complete, event logs are actively purged, temporary files securely erased, and timestamp manipulations (Timestomping) are executed to misdirect forensic incident responders.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 5: Cryptography -->
+              <div id="wiki-cryptography" class="wiki-pane" style="display:none;">
+                <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Cryptographic Hashing Fundamentals</h4>
+                <p style="color: var(--muted); font-size: 1.1rem; margin-bottom:32px;">Hashing is a one-way mathematical function securing passwords. Decryption is algorithmically impossible; hashes are instead cracked via exhaustive computational combinations.</p>
+
+                <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:32px; margin-bottom:24px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+                    <span style="background:rgba(239,68,68,0.2); color:var(--red); padding:4px 12px; border-radius:999px; font-weight:bold; font-size:0.8rem; border:1px solid rgba(239,68,68,0.5);">VULNERABLE</span>
+                    <h5 style="color:#fff; font-size:1.2rem; margin:0;">Legacy Algorithms: MD5 / SHA-1</h5>
+                  </div>
+                  <p style="color:var(--muted); font-size:1rem; margin-bottom:24px; line-height:1.6;">
+                    Legacy hashing algorithms were designed for speed, acting as file checksums. A modern RTX 4090 GPU cluster can execute <span style="color:#fff; font-weight:700; border-bottom:1px dashed var(--red);">100+ Billion MD5 hashes per second</span>. A leaked database encoded in MD5 is practically plaintext.
+                  </p>
+                  
+                  <div style="display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.03); padding:20px; border-radius:8px; border:1px solid var(--border2);">
+                    <div style="flex:1;">
+                      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">Plaintext Input</div>
+                      <div style="font-family:var(--mono); color:#fff; font-size:1.1rem;">P@ssw0rd123</div>
+                    </div>
+                    <div style="color:var(--red); font-weight:bold; font-size:1.2rem;">md5() ➔</div>
+                    <div style="flex:2;">
+                      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">Hash Output (Cracked via Rainbow Tables)</div>
+                      <div style="font-family:var(--mono); color:var(--red); font-size:1.1rem; word-break:break-all; background:rgba(239,68,68,0.1); padding:4px 8px; border-radius:4px;">a5cdd0415d8628fcb0a9cd5d2fbceb74</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.2); border-radius:12px; padding:32px; box-shadow:0 10px 30px rgba(0,255,136,0.05);">
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+                    <span style="background:rgba(16,185,129,0.2); color:var(--green); padding:4px 12px; border-radius:999px; font-weight:bold; font-size:0.8rem; border:1px solid rgba(16,185,129,0.5);">SECURE STANDARD</span>
+                    <h5 style="color:#fff; font-size:1.2rem; margin:0;">Modern Cost-Based: Argon2 & Bcrypt</h5>
+                  </div>
+                  <p style="color:var(--muted); font-size:1rem; line-height:1.6; margin-bottom:24px;">
+                    These algorithms enforce a "Work Factor" (Cost Parameter). They are intentionally designed to be slow and <strong style="color:var(--green);">memory-hard</strong>, crippling standard generic GPU cracking architectures. Salts are automatically randomized and integrated.
+                  </p>
+                  <div style="background:rgba(0,0,0,0.5); padding:20px; border-radius:8px; border:1px solid var(--border2);">
+                    <code style="display:block; font-family:var(--mono); font-size:1rem; color:#fff; margin-bottom:12px;">
+                      <span style="color:var(--muted);">// Cost-adjusted Bcrypt representation</span><br><br>
+                      <span style="color:var(--green);">$2y$</span><span style="color:var(--yellow);">12$</span><span style="color:var(--cyan);">wZ/D.o1D6V0PXZWzH</span><span style="color:#fff;">O5V8e3Q7NqZ9Pz2</span>
+                    </code>
+                    <div style="display:flex; gap:12px; font-size:0.8rem; font-family:var(--mono);">
+                      <span style="background:rgba(16,185,129,0.1); color:var(--green); padding:2px 8px; border-radius:4px;">Algo ID: $2y$</span>
+                      <span style="background:rgba(245,158,11,0.1); color:var(--yellow); padding:2px 8px; border-radius:4px;">Work Factor: 12</span>
+                      <span style="background:rgba(0,240,255,0.1); color:var(--cyan); padding:2px 8px; border-radius:4px;">Unique Salt</span>
+                      <span style="background:rgba(255,255,255,0.1); color:#fff; padding:2px 8px; border-radius:4px;">Derived Hash</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:24px; margin-top:24px;">
+                  <div style="flex:1; background:rgba(255,255,255,0.02); padding:24px; border-radius:12px; border:1px solid var(--border2);">
+                    <h5 style="color:var(--cyan); font-size:1.1rem; margin-bottom:8px;">🧂 Salts (Database Layer)</h5>
+                    <p style="color:var(--muted); font-size:0.95rem; line-height:1.6;">A unique random string generated for <strong style="color:#fff;">each user</strong> and stored in plaintext directly beside the hash in the database. Its purpose is to completely neutralize pre-computed "Rainbow Table" mass lookups.</p>
+                  </div>
+                  <div style="flex:1; background:rgba(255,255,255,0.02); padding:24px; border-radius:12px; border:1px solid var(--border2);">
+                    <h5 style="color:var(--purple2); font-size:1.1rem; margin-bottom:8px;">🌶️ Peppers (Application Layer)</h5>
+                    <p style="color:var(--muted); font-size:0.95rem; line-height:1.6;">A global secret string stored securely in the application code or an HSM, <strong style="color:#fff;">never</strong> in the DB. If the database leaks, the attacker still cannot crack the hashes without compromising the server itself.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 6: Cloud Security -->
+              <div id="wiki-cspm" class="wiki-pane" style="display:none;">
+                <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Cloud Security Posture Management</h4>
+                <p style="color: var(--muted); font-size: 1.1rem; margin-bottom:32px;">Automating the identification and remediation of risks across cloud infrastructures, including IaaS, SaaS, and PaaS architectures.</p>
+
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                  <div class="wiki-interactive-row" style="display:flex; align-items:center; gap:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border); transition:all 0.3s; cursor:pointer;">
+                    <div style="font-size:1.8rem; width:65px; height:65px; background:rgba(0,240,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--cyan); border:1px dashed var(--cyan);">🪣</div>
+                    <div style="flex:1;">
+                      <h5 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">S3 / Blob Storage Misconfigurations</h5>
+                      <p style="color:var(--muted); font-size:0.95rem; line-height:1.5;">The most common cloud vulnerability. Developers often set cloud storage buckets to 'Public Read' by mistake, exposing terabytes of PII or proprietary source code without requiring any internal access.</p>
+                    </div>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="display:flex; align-items:center; gap:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border); transition:all 0.3s; cursor:pointer;">
+                    <div style="font-size:1.8rem; width:65px; height:65px; background:rgba(245,158,11,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--yellow); border:1px dashed var(--yellow);">🔑</div>
+                    <div style="flex:1;">
+                      <h5 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">Overly Permissive IAM Roles</h5>
+                      <p style="color:var(--muted); font-size:0.95rem; line-height:1.5;">Assigning broad wildcards (e.g., `s3:*` or `iam:*`) to service accounts. If an attacker exploits a low-level application using this role, they can instantly pivot and commandeer the entire cloud tenant.</p>
+                    </div>
+                  </div>
+                  
+                  <div class="wiki-interactive-row" style="display:flex; align-items:center; gap:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--border); transition:all 0.3s; cursor:pointer;">
+                    <div style="font-size:1.8rem; width:65px; height:65px; background:rgba(168,85,247,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--purple2); border:1px dashed var(--purple2);">🚨</div>
+                    <div style="flex:1;">
+                      <h5 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">Hardcoded Cloud Secrets</h5>
+                      <p style="color:var(--muted); font-size:0.95rem; line-height:1.5;">Leaving AWS Access Keys or GCP JSON accounts embedded inside open-source GitHub repositories or front-end JavaScript bundles.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 7: Social Engineering -->
+              <div id="wiki-soceng" class="wiki-pane" style="display:none;">
+                <h4 style="font-size: 2rem; color: #fff; margin-bottom: 8px; line-height: 1.2;">Social Engineering Tactics</h4>
+                <p style="color: var(--muted); font-size: 1.1rem; margin-bottom:32px;">The psychological manipulation of human behavior to bypass technical security controls. Humans are frequently the weakest perimeter.</p>
+
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                  <div style="background:rgba(239,68,68,0.05); border:1px solid var(--border); border-left:4px solid var(--red); padding:24px; border-radius:0 12px 12px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                      <span style="font-size:1.5rem;">🎣</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Spear-Phishing & Whaling</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:1rem; margin-left:36px; line-height:1.6;">Unlike mass phishing, spear-phishing utilizes OSINT to create highly personalized lures targeting specific employees. "Whaling" exclusively targets executives (C-Suite) acting as trusted authority figures to demand immediate wire transfers or credential sharing.</p>
+                  </div>
+                  
+                  <div style="background:rgba(245,158,11,0.05); border:1px solid var(--border); border-left:4px solid var(--yellow); padding:24px; border-radius:0 12px 12px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                      <span style="font-size:1.5rem;">📞</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Vishing (Voice Phishing) & Deepfakes</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:1rem; margin-left:36px; line-height:1.6;">Calling support desks using pretexting (e.g., pretending to be a frantic employee locked out of MFA). Advanced actors now utilize real-time AI Voice Cloning (Deepfakes) to perfectly mimic the CEO's voice on emergency teleconferences.</p>
+                  </div>
+                  
+                  <div style="background:rgba(168,85,247,0.05); border:1px solid var(--border); border-left:4px solid var(--purple2); padding:24px; border-radius:0 12px 12px 0;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                      <span style="font-size:1.5rem;">📱</span>
+                      <h5 style="color:#fff; font-size:1.2rem; margin:0;">Smishing (SMS) & MFA Fatigue</h5>
+                    </div>
+                    <p style="color:var(--muted); font-size:1rem; margin-left:36px; line-height:1.6;">Sending fraudulent IT support links via SMS. Once the target clicks and types their password, attackers spam the victim's phone with thousands of legitimate MFA push notifications ("MFA Fatigue") until the annoyed user accidentally hits "Approve".</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <br><br><br>
+    </section>
+
+    <!-- Live Threat Ticker -->
+    <div class="threat-ticker-wrapper" id="threat-ticker-container">
+      <div class="threat-ticker">
+        <div class="threat-item"><span class="hot">🔴 JUST IN:</span> 2.4M records exposed in RockYou2024 compilation
+        </div>
+        <div class="threat-item"><span>⚠️ Data Incident:</span> Unknown actor leaks 500k credentials on cracking forum
+        </div>
+        <div class="threat-item"><span class="hot">🔴 BREACH ALERT:</span> Tech startup exposes internal user database
+        </div>
+        <div class="threat-item"><span>⚠️ Tracker:</span> 15,000 new botnet logs parsed into LeakCheck index today</div>
+        <div class="threat-item"><span class="hot">🔴 JUST IN:</span> 2.4M records exposed in RockYou2024 compilation
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <section id="loading-section" class="loading-state">
+      <div class="scanner-ring"></div>
+      <h2 class="loading-text" id="loading-msg">Cross-referencing digital records...</h2>
+    </section>
+
+    <!-- Unified Dashboard Results -->
+    <section id="dashboard-section" class="dashboard">
+      <div class="dash-header">
+        <div>
+          <h2 class="dash-title">Exposure Report</h2>
+          <div class="dash-subtitle" id="report-target">target@example.com</div>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn-outline" onclick="downloadPDF()">📄 Export Report</button>
+          <button class="btn-outline" onclick="resetUI()">← New Scan</button>
+        </div>
+      </div>
+
+      <div class="top-panel">
+        <!-- Gauge Card -->
+        <div class="glass-panel gauge-card" data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare="true"
+          data-tilt-max-glare="0.2">
+          <svg viewBox="0 0 36 36" class="svg-gauge">
+            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="gauge-progress" id="score-gauge"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <text x="18" y="20.5" class="gauge-score" id="score-text" text-anchor="middle" fill="white">0</text>
+          </svg>
+          <div class="severity-badge" id="severity-badge">UNKNOWN</div>
+          <div class="gauge-label" style="margin-top: 12px;">Risk Score</div>
+        </div>
+
+        <!-- Summary Card -->
+        <div class="glass-panel summary-card" data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare="true"
+          data-tilt-max-glare="0.2">
+          <p id="summary-text">Analyzing your digital presence for vulnerabilities...</p>
+          <div class="top-risks-title">Critical Data Exposed</div>
+          <div class="risk-tags" id="risk-tags-container">
+            <span class="risk-tag">None detected</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Signals Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card mc-lc" data-tilt data-tilt-max="10" data-tilt-speed="300" data-tilt-glare="true"
+          data-tilt-max-glare="0.1">
+          <div class="metric-title">Credential Leaks</div>
+          <div class="metric-value" id="val-leaks">0</div>
+          <div class="metric-sub" id="sub-leaks">Database Index</div>
+        </div>
+        <div class="metric-card mc-hunter" data-tilt data-tilt-max="10" data-tilt-speed="300" data-tilt-glare="true"
+          data-tilt-max-glare="0.1">
+          <div class="metric-title">Email Status</div>
+          <div class="metric-value" id="val-hunter" style="font-size: 1.4rem;">Safe</div>
+          <div class="metric-sub" id="sub-hunter">Verified deliverability</div>
+        </div>
+        <div class="metric-card mc-vt" data-tilt data-tilt-max="10" data-tilt-speed="300" data-tilt-glare="true"
+          data-tilt-max-glare="0.1">
+          <div class="metric-title">Domain Security</div>
+          <div class="metric-value" id="val-vt" style="font-size: 1.4rem;">Clean</div>
+          <div class="metric-sub">Threat Intel Network</div>
+        </div>
+        <div class="metric-card mc-social" data-tilt data-tilt-max="10" data-tilt-speed="300" data-tilt-glare="true"
+          data-tilt-max-glare="0.1">
+          <div class="metric-title">Social Footprint</div>
+          <div class="metric-value" id="val-social">0</div>
+          <div class="metric-sub">Public Mentions</div>
+        </div>
+      </div>
+
+      <!-- Actionable Suggestions -->
+      <div class="suggestions-section glass-panel" id="suggestions-wrap">
+        <h3><span style="margin-right:8px">🛡️</span>Actionable Next Steps</h3>
+        <ul class="suggestions-list" id="suggestions-list">
+          <!-- Populated via JS -->
+        </ul>
+      </div>
+
+      <!-- Attack Surface Overview -->
+      <div class="attack-surface-section" id="breaches-wrapper" style="display:none;">
+        <div class="as-header-top">
+          <div class="as-title">Attack Surface Overview</div>
+          <div class="as-search">
+            <span>🔍</span>
+            <input type="text" placeholder="Search..." />
+          </div>
+        </div>
+        <div class="as-table-wrapper">
+          <table class="as-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Connector</th>
+                <th>Workload</th>
+                <th>Security Score</th>
+                <th>Date</th>
+                <th>Permissions</th>
+              </tr>
+            </thead>
+            <tbody id="breach-list">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Floating Chatbot -->
+  <div class="chat-fab" onclick="toggleChat()" id="chat-fab">💬</div>
+
+  <div class="chat-widget" id="chat-widget">
+    <div class="chat-header">
+      <div class="chat-icon">
+        <span>🤖 TraceZero AI</span>
+      </div>
+      <button class="chat-toggle" onclick="toggleChat()" id="chat-toggle-btn">✖</button>
+    </div>
+
+    <div class="chat-body" id="chat-window">
+      <div class="msg ai">
+        👋 Hi! I'm TraceZero AI, powered by Gemini. <br><br>I can help you interpret your scan results or answer general
+        cybersecurity questions.
+        <div class="msg-meta">Now</div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Ask about passwords, VPNs..."
+        onkeydown="if(event.key==='Enter') sendChat()" />
+      <button id="btn-chat" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = 'http://localhost:8000';
+    let currentContext = null;
+
+    // High risk tags for coloring
+    const HIGH_RISK = ["Passwords", "Password hints", "Credit cards", "Bank account numbers", "Private messages", "Social security numbers", "Auth tokens"];
+
+    /* ── API Status Check ────────────────────────────────────────────── */
+    async function checkStatus() {
+      const dot = document.getElementById('apiDot');
+      const txt = document.getElementById('apiStatusText');
+      try {
+        const r = await fetch(BASE_URL + '/', { signal: AbortSignal.timeout(3000) });
+        if (r.ok) {
+          dot.className = 'status-dot online';
+          txt.textContent = 'API Online';
+        } else throw new Error();
+      } catch {
+        dot.className = 'status-dot offline';
+        txt.textContent = 'API Offline';
+      }
+    }
+    checkStatus(); setInterval(checkStatus, 15000);
+
+    /* ── Homepage Navigation: Smooth Scroll & Active State ───────────── */
+    function smoothScroll(selector) {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      // Nav is now inline in the header — only one sticky bar (~65px)
+      const offset = 90;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+
+    // Prevent default anchor jump and delegate to smoothScroll
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        const href = this.getAttribute('href');
+        smoothScroll(href);
+      });
+    });
+
+    // Highlight active nav link based on scroll position
+    const navSections = [
+      { id: 'section-features', navId: 'nav-features' },
+      { id: 'section-pipeline', navId: 'nav-pipeline' },
+      { id: 'section-architecture', navId: 'nav-arch' },
+      { id: 'section-scoring', navId: 'nav-scoring' },
+      { id: 'section-wiki', navId: 'nav-wiki' },
+    ];
+
+    function updateActiveNav() {
+      const scrollY = window.scrollY + 200;
+      let activeId = null;
+      navSections.forEach(({ id }) => {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top + window.scrollY - 200 <= scrollY) {
+          activeId = id;
+        }
+      });
+      navSections.forEach(({ id, navId }) => {
+        const link = document.getElementById(navId);
+        if (link) link.classList.toggle('active', id === activeId);
+      });
+    }
+
+    window.addEventListener('scroll', updateActiveNav, { passive: true });
+
+    // Fade nav links out during scan (opacity only — keeps header grid intact)
+    function updateNavVisibility() {
+      const nav = document.getElementById('home-nav');
+      const dashboard = document.getElementById('dashboard-section');
+      const loading = document.getElementById('loading-section');
+      if (!nav) return;
+      const scanActive = dashboard.style.display === 'block' ||
+        loading.style.display === 'flex';
+      nav.classList.toggle('hidden', scanActive);
+    }
+
+    /* ── Secret Shortcuts & Interactive UI ───────────────────────────── */
+    document.addEventListener('keydown', (e) => {
+      // Secret Demo Mode (Ctrl+D or Cmd+D)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        runDemoMode();
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+      const bg = document.querySelector('.bg-animation');
+      bg.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(124, 58, 237, 0.15) 0%, transparent 40%),
+                             radial-gradient(circle at ${(1 - x) * 100}% ${(1 - y) * 100}%, rgba(0, 240, 255, 0.1) 0%, transparent 40%)`;
+    });
+
+    // Spawn lively floating data nodes
+    for (let i = 0; i < 20; i++) {
+      const node = document.createElement('div');
+      node.className = 'floating-node';
+      const size = Math.random() * 4 + 2;
+      node.style.width = size + 'px';
+      node.style.height = size + 'px';
+      node.style.left = Math.random() * 100 + 'vw';
+      node.style.top = Math.random() * 100 + 'vh';
+      node.style.animationDuration = (Math.random() * 10 + 5) + 's';
+      node.style.animationDelay = (Math.random() * 5) + 's';
+      if (Math.random() > 0.5) {
+        node.style.background = 'var(--purple2)';
+        node.style.boxShadow = 'var(--glow-purple)';
+      }
+      document.body.appendChild(node);
+    }
+
+    // Faux Background Terminal (Live Telemetry Matrix)
+    const vectors = ["credential_stuffing", "brute_force", "sqli_attempt", "api_abuse", "zero_day"];
+    const statuses = ["BLOCKED", "INTERCEPTED", "NULL_ROUTED", "ANALYZING"];
+    const bgTerminal = document.getElementById('bg-terminal');
+
+    setInterval(() => {
+      if (document.getElementById('dashboard-section').style.display === 'block') return;
+      const p = document.createElement('div');
+      const hash = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+      const vec = vectors[Math.floor(Math.random() * vectors.length)];
+      const stat = statuses[Math.floor(Math.random() * statuses.length)];
+      const lat = Math.floor(Math.random() * 80) + 12;
+
+      p.textContent = `{ "node": "eu-central", "hash": "${hash}", "vector": "${vec}", "ms": ${lat}, "status": "${stat}" }`;
+      bgTerminal.appendChild(p);
+      if (bgTerminal.children.length > 25) bgTerminal.firstChild.remove();
+    }, 400);
+
+    // Terminal Title Typewriter
+    const titleStr = "Assess Your Digital Exposure";
+    let titleIdx = 0;
+    const titleEl = document.getElementById('hero-title');
+    titleEl.innerHTML = '';
+    function typeTitle() {
+      if (titleIdx <= titleStr.length) {
+        titleEl.innerHTML = titleStr.substring(0, titleIdx) + '<span class="cursor" style="animation: blink 1s infinite">_</span>';
+        titleIdx++;
+        if (titleIdx <= titleStr.length) setTimeout(typeTitle, Math.random() * 60 + 40);
+      }
+    }
+    setTimeout(typeTitle, 400);
+
+    /* ── Sound Design (Web Audio API) ─────────────────────────────────── */
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'blip') {
+          // Soft modern UI click
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'tick') {
+          // Subtle mechanical typing tick
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(1200, now);
+          gain.gain.setValueAtTime(0.02, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+          osc.start(now);
+          osc.stop(now + 0.03);
+        } else if (type === 'alert-high') {
+          // Double warning beep, less abrasive than pure sawtooth
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.setValueAtTime(250, now + 0.15);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.1);
+          gain.gain.setValueAtTime(0.08, now + 0.15);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } else if (type === 'alert-low') {
+          // Pleasant soft success chime
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+          gain.gain.setValueAtTime(0.0, now);
+          gain.gain.linearRampToValueAtTime(0.05, now + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        }
+      } catch (e) { }
+    }
+
+    /* ── Utilities ───────────────────────────────────────────────────── */
+    function prefill(val) {
+      initAudio(); playSound('blip');
+      document.getElementById('target-input').value = val;
+      runAnalysis();
+    }
+
+    function switchView(view) {
+      document.getElementById('hero-section').style.display = view === 'hero' ? 'block' : 'none';
+      document.getElementById('loading-section').style.display = view === 'loading' ? 'flex' : 'none';
+      document.getElementById('dashboard-section').style.display = view === 'dash' ? 'block' : 'none';
+      document.getElementById('threat-ticker-container').style.display = view === 'hero' ? 'flex' : 'none';
+      updateNavVisibility();
+    }
+
+    function resetUI() {
+      initAudio(); playSound('blip');
+      document.getElementById('target-input').value = '';
+      currentContext = null;
+      switchView('hero');
+    }
+
+    /* ── Product Features ─────────────────────────────────────────────── */
+    function downloadPDF() {
+      initAudio(); playSound('blip');
+      const element = document.getElementById('dashboard-section');
+      const opt = {
+        margin: 0.3,
+        filename: 'TraceZero_Report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    /* ── Demo Mode ────────────────────────────────────────────────────── */
+    function runDemoMode() {
+      initAudio(); playSound('blip');
+      const input = document.getElementById('target-input');
+      input.value = '';
+      const demoEmail = 'admin@example.com';
+      let i = 0;
+      const typeInterval = setInterval(() => {
+        input.value += demoEmail.charAt(i);
+        playSound('tick');
+        i++;
+        if (i >= demoEmail.length) {
+          clearInterval(typeInterval);
+          setTimeout(runAnalysis, 500);
+        }
+      }, 50);
+    }
+
+    /* ── Main Analysis Flow ──────────────────────────────────────────── */
+    async function runAnalysis() {
+      initAudio(); playSound('blip');
+      const input = document.getElementById('target-input').value.trim();
+      if (!input) return;
+
+      switchView('loading');
+
+      const messages = ["Cross-referencing digital records...", "Scanning deep web matrices...", "Checking threat intelligence nodes...", "Analyzing semantic risk patterns..."];
+      let msgIdx = 0;
+      const tId = setInterval(() => {
+        msgIdx = (msgIdx + 1) % messages.length;
+        document.getElementById('loading-msg').textContent = messages[msgIdx];
+      }, 1500);
+
+      try {
+        const res = await fetch(`${BASE_URL}/analyze?input=${encodeURIComponent(input)}`);
+        const data = await res.json();
+
+        clearInterval(tId);
+        if (!res.ok) throw new Error(data.detail || "API Error");
+
+        renderDashboard(data);
+        switchView('dash');
+
+        if (data.severity === "HIGH") {
+          setTimeout(() => playSound('alert-high'), 300);
+        } else {
+          setTimeout(() => playSound('alert-low'), 300);
+        }
+      } catch (err) {
+        clearInterval(tId);
+        alert("Error: " + err.message + "\nEnsure server is running (uvicorn main:app --reload)");
+        switchView('hero');
+      }
+    }
+
+    /* ── Render Dashboard DOM ────────────────────────────────────────── */
+    function renderDashboard(data) {
+      // Create context string for chatbot
+      currentContext = `Target: ${data.input}\nScore: ${data.risk_score}/100\nSeverity: ${data.severity}\nSummary: ${data.summary}`;
+
+      // Title
+      document.getElementById('report-target').textContent = data.input;
+
+      // Gauge & Score
+      const gauge = document.getElementById('score-gauge');
+      const scoreTxt = document.getElementById('score-text');
+      const score = data.risk_score || 0;
+
+      setTimeout(() => {
+        gauge.style.strokeDasharray = `${score}, 100`;
+      }, 100);
+
+      let startObj = { val: 0 };
+      let end = score;
+      let duration = 1500;
+      let startT = null;
+      function iter(t) {
+        if (!startT) startT = t;
+        let p = Math.min((t - startT) / duration, 1);
+        scoreTxt.textContent = Math.floor(p * end);
+        if (p < 1) requestAnimationFrame(iter);
+      }
+      requestAnimationFrame(iter);
+
+      // Severity Badge
+      const badge = document.getElementById('severity-badge');
+      const sev = data.severity.toUpperCase();
+      badge.textContent = sev + " RISK";
+      badge.className = 'severity-badge';
+      let gaugeColorClass = 'sev-none';
+      if (sev === "HIGH") gaugeColorClass = 'sev-high';
+      else if (sev === "MEDIUM") gaugeColorClass = 'sev-medium';
+      else if (sev === "LOW") gaugeColorClass = 'sev-low';
+
+      badge.classList.add(gaugeColorClass);
+      gauge.className.baseVal = "gauge-progress " + gaugeColorClass;
+
+      // Summary & Tags
+      document.getElementById('summary-text').textContent = data.summary;
+      const tagsBox = document.getElementById('risk-tags-container');
+      if (data.top_risks && data.top_risks.length > 0) {
+        tagsBox.innerHTML = data.top_risks.map(r =>
+          `<span class="risk-tag" style="border-color:${HIGH_RISK.includes(r) ? '#ef4444' : 'var(--border)'}; color:${HIGH_RISK.includes(r) ? '#fca5a5' : 'var(--text)'}">${r}</span>`
+        ).join('');
+      } else {
+        tagsBox.innerHTML = '<span class="risk-tag" style="background:var(--green-glow);border-color:var(--green);color:var(--green);">Clean</span>';
+      }
+
+      // Metric Cards
+      const lcNum = data.signals?.leakcheck_found || 0;
+      document.getElementById('val-leaks').textContent = lcNum;
+      document.getElementById('sub-leaks').textContent = "Database Index";
+
+      // Hunter logic
+      let isRisky = data.signals?.email_risky || data.signals?.email_disposable;
+      if (data.input_type !== 'email') {
+        document.getElementById('val-hunter').textContent = "N/A";
+        document.getElementById('sub-hunter').textContent = "Username input";
+      } else {
+        document.getElementById('val-hunter').textContent = isRisky ? "Risky" : "Safe";
+        document.getElementById('val-hunter').style.color = isRisky ? "var(--yellow)" : "var(--green)";
+        document.getElementById('sub-hunter').textContent = data.signals?.email_disposable ? "Disposable email used" : "Status check";
+      }
+
+      // VT logic
+      const isFlagged = data.signals?.domain_flagged;
+      document.getElementById('val-vt').textContent = isFlagged ? 'Flagged' : 'Clean';
+      document.getElementById('val-vt').style.color = isFlagged ? 'var(--red)' : 'var(--green)';
+
+      // Social
+      document.getElementById('val-social').textContent = data.signals?.social_mentions || 0;
+
+      // Actionable Suggestions
+      const reqList = document.getElementById('suggestions-list');
+      let suggestions = [];
+      if (lcNum > 0 || score > 30) {
+        suggestions.push("Immediately change passwords for any compromised or shared accounts.");
+        suggestions.push("Enable Multi-Factor Authentication (MFA) on your most critical accounts (Banking, Email).");
+        suggestions.push("Use a dedicated password manager to generate and store unique credentials.");
+      }
+      if (isRisky) {
+        suggestions.push("Your email is flagged as risky or disposable. Avoid using it for sensitive registrations.");
+      }
+      if (isFlagged) {
+        suggestions.push("Your email domain is flagged by security networks. Avoid downloading unverified attachments from this domain.");
+      }
+      if (data.signals?.social_mentions > 50) {
+        suggestions.push("Your public footprint is high. Review privacy settings on your social media platforms to minimize OSINT exposure.");
+      }
+      if (suggestions.length === 0) {
+        suggestions.push("Your digital identity appears highly secure. Keep up the excellent security hygiene!");
+      }
+      reqList.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
+
+      // Attack Surface Overview (formerly Breaches List)
+      const bWrapper = document.getElementById('breaches-wrapper');
+      const bList = document.getElementById('breach-list');
+
+      if (data.breakdown && data.breakdown.length > 0) {
+        bWrapper.style.display = 'block';
+        bList.innerHTML = data.breakdown.map((b, i) => {
+          // Mocking varied icons and connectors based on index for the complex UI feel
+          const icons = [
+            { cls: 'aws', char: '☁', name: 'AWS Cloud', permCount: 3 },
+            { cls: 'gcp', char: '⚡', name: 'GCP Service', permCount: 2 },
+            { cls: 'azure', char: '💠', name: 'Azure Active Dir', permCount: 4 },
+            { cls: 'default', char: '🛡️', name: 'Local Network', permCount: 1 }
+          ];
+          const iconMeta = icons[i % icons.length];
+          
+          let scoreColor = 'var(--green)';
+          if(b.severity === 'HIGH') scoreColor = 'var(--red)';
+          else if(b.severity === 'MEDIUM') scoreColor = 'var(--yellow)';
+
+          let fakeScore = Number(b.score) || 0;
+          if (fakeScore > 0 && fakeScore <= 10) fakeScore = Math.floor(fakeScore * 10);
+          if (fakeScore > 100) fakeScore = 100;
+          if (fakeScore === 0) {
+            if (b.severity === 'HIGH') fakeScore = Math.floor(Math.random() * 20) + 75;
+            else if (b.severity === 'MEDIUM') fakeScore = Math.floor(Math.random() * 20) + 40;
+            else fakeScore = Math.floor(Math.random() * 20) + 10;
+          }
+
+          // Permission mock icons
+          const permIcons = Array.from({length: iconMeta.permCount}).map((_, j) => {
+             const dict = ['🔑','🌐','💿','🛡️'];
+             return `<div class="as-perm-icon">${dict[Math.min(j, 3)]}</div>`;
+          }).join('');
+
+          return `
+            <tr class="as-row slide-in" style="animation-delay: ${i * 0.15}s;">
+              <td>
+                <div class="as-name-col">
+                  <div class="as-icon ${iconMeta.cls}">${iconMeta.char}</div>
+                  <div>
+                    <div class="as-main-text">${b.breach.substring(0, 25)}</div>
+                    <div class="as-sub-text">Database | <span>Entry</span></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="as-name-col">
+                  <div class="as-icon" style="width:24px; height:24px; font-size:0.8rem;">${iconMeta.char}</div>
+                  <span class="as-main-text" style="font-weight: 500;">${iconMeta.name}</span>
+                </div>
+              </td>
+              <td>
+                <div class="as-main-text">Data exposure</div>
+                <div class="as-sub-text">${b.compromised_data.length} compromised keys</div>
+              </td>
+              <td>
+                <div class="as-score-td">
+                  <div class="as-score-bar-wrap">
+                    <div class="as-score-bar-fill" style="width:${fakeScore}%; background:${scoreColor}; box-shadow: 0 0 8px ${scoreColor}80;"></div>
+                  </div>
+                  <div class="as-score-text">${fakeScore}%</div>
+                </div>
+              </td>
+              <td class="as-main-text" style="font-weight:400; color:var(--muted);">${b.date}</td>
+              <td>
+                <div class="as-perms">${permIcons}</div>
+              </td>
+            </tr>`;
+        }).join('');
+      } else {
+        bWrapper.style.display = 'none';
+      }
+    }
+
+    /* ── Floating Chatbot Logic ──────────────────────────────────────── */
+    const chatWidget = document.getElementById('chat-widget');
+    const toggleBtn = document.getElementById('chat-toggle-btn');
+    const win = document.getElementById('chat-window');
+
+    function toggleChat() {
+      chatWidget.classList.toggle('active');
+      if (chatWidget.classList.contains('active')) {
+        win.scrollTop = win.scrollHeight;
+        document.getElementById('chat-input').focus();
+      }
+    }
+
+    async function sendChat() {
+      const inp = document.getElementById('chat-input');
+      const q = inp.value.trim();
+      if (!q) return;
+      inp.value = '';
+
+      // User msg
+      appendChat('user', q);
+
+      // Loading thinking
+      const thinkId = 'think-' + Date.now();
+      appendChat('think', 'Thinking...', thinkId);
+
+      const btn = document.getElementById('btn-chat');
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch(BASE_URL + '/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q, context: currentContext }),
+        });
+        const data = await resp.json();
+        const thinkEl = document.getElementById(thinkId);
+        if (thinkEl) thinkEl.remove();
+
+        if (resp.ok) {
+          appendChat('ai', formatMarkdown(data.reply), null, data.powered_by);
+        } else {
+          appendChat('ai', '⚠️ Error: ' + (data.detail || 'Unknown error'));
+        }
+      } catch (err) {
+        const thinkEl = document.getElementById(thinkId);
+        if (thinkEl) thinkEl.remove();
+        appendChat('ai', '⚠️ Cannot reach API. Is the server running?');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function appendChat(role, html, id = null, poweredBy = null) {
+      const meta = poweredBy ? `<div class="msg-meta">Powered by ${poweredBy}</div>` : '';
+      const msgId = id || `msg-${Date.now()}`;
+      win.insertAdjacentHTML('beforeend', `<div id="${msgId}" class="msg ${role}" style="${role === 'ai' && !id ? 'opacity:0' : ''}"></div>`);
+
+      const el = document.getElementById(msgId);
+      el.innerHTML = html + meta;
+
+      if (role === 'ai' && !id) {
+        playSound('tick');
+        let op = 0;
+        const fade = setInterval(() => {
+          op += 0.1;
+          el.style.opacity = op;
+          if (op >= 1) clearInterval(fade);
+        }, 30);
+      }
+      win.scrollTop = win.scrollHeight;
+    }
+
+    function formatMarkdown(text) {
+      return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,.1);padding:2px 4px;border-radius:4px;font-family:var(--mono);font-size:0.9em">$1</code>')
+        .replace(/\n/g, '<br>');
+    }
+
+    /* ── Wiki Hub Tabs ────────────────────────────────────────────────── */
+    function openWikiTab(event, id) {
+      initAudio(); playSound('tick');
+      document.querySelectorAll('.wiki-pane').forEach(p => p.style.display = 'none');
+      document.querySelectorAll('.wiki-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).style.display = 'block';
+      event.currentTarget.classList.add('active');
+    }
+
+    /* ── Firebase Authentication (Placeholders) ──────────────────────── */
+    // TODO: Replace with your actual Firebase configuration object
+    const firebaseConfig = {
+      apiKey: "AIzaSyA3QepZk3P3wdu8Ym7DfljAjJCa90f64aM",
+      authDomain: "tracezero-af0dd.firebaseapp.com",
+      projectId: "tracezero-af0dd",
+      storageBucket: "tracezero-af0dd.firebasestorage.app",
+      messagingSenderId: "417548552499",
+      appId: "1:417548552499:web:9d6124862a7a726cb65646",
+      measurementId: "G-PFXJQ1NJH4"
+    };
+
+    // Initialize Firebase only if the placeholder is changed or ignore errors
+    let fAuth = null;
+    let confirmationResult = null;
+
+    try {
+      if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        fAuth = firebase.auth();
+
+        fAuth.onAuthStateChanged((user) => {
+          const btn = document.getElementById('auth-btn');
+          const display = document.getElementById('user-display');
+
+          if (user) {
+            btn.textContent = "Logout";
+            btn.onclick = () => { fAuth.signOut(); };
+            display.style.display = 'block';
+            display.textContent = user.email || user.phoneNumber || 'User';
+            closeAuthModal();
+          } else {
+            btn.textContent = "Login";
+            btn.onclick = openAuthModal;
+            display.style.display = 'none';
+          }
+        });
+      } else {
+        console.warn("Firebase config is using placeholders. Auth will not work until updated.");
+      }
+    } catch (e) {
+      console.error("Firebase init error", e);
+    }
+
+    function openAuthModal() {
+      initAudio(); playSound('blip');
+      if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+        alert("Firebase Authentication is not configured. Please add your config in index.html to enable authentication.");
+        return;
+      }
+      document.getElementById('auth-overlay').style.display = 'flex';
+
+
+    }
+
+    function closeAuthModal() {
+      initAudio(); playSound('tick');
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('auth-error').textContent = '';
+    }
+
+    async function signInWithGoogle() {
+      initAudio(); playSound('blip');
+      document.getElementById('auth-error').textContent = '';
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await fAuth.signInWithPopup(provider);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('auth-error').textContent = err.message;
+      }
+    }
+
+
+
+    async function signInWithEmail() {
+      initAudio(); playSound('blip');
+      document.getElementById('auth-error').textContent = '';
+      const email = document.getElementById('email-input').value.trim();
+      const password = document.getElementById('password-input').value.trim();
+
+      if (!email || !password) {
+        document.getElementById('auth-error').textContent = 'Please enter both email and password.';
+        return;
+      }
+
+      const btn = document.getElementById('btn-email-login');
+      btn.disabled = true;
+      btn.textContent = 'Logging in...';
+
+      try {
+        await fAuth.signInWithEmailAndPassword(email, password);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('auth-error').textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Login';
+      }
+    }
+
+    async function signUpWithEmail() {
+      initAudio(); playSound('blip');
+      document.getElementById('auth-error').textContent = '';
+      const email = document.getElementById('email-input').value.trim();
+      const password = document.getElementById('password-input').value.trim();
+
+      if (!email || !password) {
+        document.getElementById('auth-error').textContent = 'Please enter both email and password.';
+        return;
+      }
+
+      const btn = document.getElementById('btn-email-signup');
+      btn.disabled = true;
+      btn.textContent = 'Signing up...';
+
+      try {
+        await fAuth.createUserWithEmailAndPassword(email, password);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('auth-error').textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign Up';
+      }
+    }
+
+    /* ── SSE Bubble Graph interactions ───────────────────────────────── */
+    (function() {
+      const graph  = document.getElementById('sse-graph');
+      const center = document.getElementById('sse-center');
+      if (!graph || !center) return;
+
+      center.addEventListener('mouseenter', () => graph.classList.add('sse-exploded'));
+      graph.addEventListener('mouseleave',  () => graph.classList.remove('sse-exploded'));
+    })();
+  </script>
+</body>
+
+</html>

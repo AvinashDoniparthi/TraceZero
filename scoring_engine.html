@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TraceZero — Severity Scoring Engine</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --cyan: #00f5ff;
+    --orange: #ff6b35;
+    --green: #00ff88;
+    --red: #ff3355;
+    --purple: #7b2fff;
+    --yellow: #ffcc00;
+    --mono: 'Courier New', Courier, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: #e0e0e0;
+    font-family: var(--mono);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Subtle grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+
+  /* ─── Graph container ─── */
+  #graph {
+    position: relative;
+    width: 760px;
+    height: 760px;
+  }
+
+  /* ─── SVG Lines ─── */
+  #lines {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .connector {
+    stroke-width: 1.5;
+    fill: none;
+    stroke-dasharray: 8 5;
+    stroke-dashoffset: 0;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    animation: flow 18s linear infinite;
+  }
+  @keyframes flow { to { stroke-dashoffset: -500; } }
+
+  #graph.exploded .connector { opacity: 0.55; }
+
+  /* ─── Center Bubble ─── */
+  .center-bubble {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    border: 2px solid var(--cyan);
+    background: rgba(0,245,255,0.05);
+    backdrop-filter: blur(12px);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    padding: 20px;
+    cursor: default;
+    z-index: 20;
+    box-shadow: 0 0 30px rgba(0,245,255,0.2), inset 0 0 18px rgba(0,245,255,0.08);
+    animation: pulse 3s ease-in-out infinite alternate;
+    transition: box-shadow 0.3s;
+  }
+
+  @keyframes pulse {
+    from { box-shadow: 0 0 20px rgba(0,245,255,0.18), inset 0 0 10px rgba(0,245,255,0.06); }
+    to   { box-shadow: 0 0 55px rgba(0,245,255,0.5),  inset 0 0 28px rgba(0,245,255,0.2);  }
+  }
+
+  .center-bubble h1 {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 6px var(--cyan);
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  .center-bubble p {
+    font-size: 9px;
+    color: var(--cyan);
+    opacity: 0.75;
+    line-height: 1.5;
+  }
+
+  /* ─── Child Bubbles ─── */
+  .node {
+    position: absolute;
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center;
+    justify-content: center; text-align: center;
+    font-size: 11px; font-weight: bold;
+    padding: 14px;
+    cursor: pointer;
+    z-index: 15;
+    opacity: 0;
+    pointer-events: none;
+    /* Start at center, invisible */
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.05);
+    transition: opacity 0.5s ease, transform 0.55s cubic-bezier(0.34,1.56,0.64,1), filter 0.2s;
+  }
+  .node:hover { filter: brightness(1.35); }
+
+  /* ─── Exploded positions ─── */
+  #graph.exploded .node {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* pos: top-right, top-left, bottom-right, bottom-left */
+  #graph.exploded .n1 { top: 12%; left: 82%; transform: translate(-50%,-50%) scale(1); animation: bob1 4.2s ease-in-out infinite; }
+  #graph.exploded .n2 { top: 12%; left: 18%; transform: translate(-50%,-50%) scale(1); animation: bob2 3.8s ease-in-out infinite; }
+  #graph.exploded .n3 { top: 88%; left: 82%; transform: translate(-50%,-50%) scale(1); animation: bob1 5.0s ease-in-out infinite; }
+  #graph.exploded .n4 { top: 88%; left: 18%; transform: translate(-50%,-50%) scale(1); animation: bob2 4.5s ease-in-out infinite; }
+
+  @keyframes bob1 {
+    0%,100% { transform: translate(-50%,-50%) scale(1) translateY(0px); }
+    50%      { transform: translate(-50%,-50%) scale(1) translateY(-9px); }
+  }
+  @keyframes bob2 {
+    0%,100% { transform: translate(-50%,-50%) scale(1) translateY(0px); }
+    50%      { transform: translate(-50%,-50%) scale(1) translateY(9px); }
+  }
+
+  /* Colors per node */
+  .n1 { border: 1.5px solid var(--red);    background: rgba(255,51,85,0.07);    color: var(--red);    box-shadow: 0 0 18px rgba(255,51,85,0.2),  inset 0 0 12px rgba(255,51,85,0.08); }
+  .n2 { border: 1.5px solid var(--yellow); background: rgba(255,204,0,0.07);    color: var(--yellow); box-shadow: 0 0 18px rgba(255,204,0,0.2),  inset 0 0 12px rgba(255,204,0,0.08); }
+  .n3 { border: 1.5px solid var(--orange); background: rgba(255,107,53,0.07);   color: var(--orange); box-shadow: 0 0 18px rgba(255,107,53,0.2), inset 0 0 12px rgba(255,107,53,0.08);}
+  .n4 { border: 1.5px solid var(--green);  background: rgba(0,255,136,0.07);    color: var(--green);  box-shadow: 0 0 18px rgba(0,255,136,0.2),  inset 0 0 12px rgba(0,255,136,0.08); }
+
+  /* ─── Dropdown Popover ─── */
+  .popover {
+    position: absolute;
+    width: 320px;
+    background: rgba(10,10,18,0.92);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 18px 20px;
+    backdrop-filter: blur(18px);
+    z-index: 200;
+    opacity: 0;
+    transform: scale(0.88) translateY(-6px);
+    transform-origin: top center;
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.34,1.4,0.64,1);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+  }
+
+  /* open state */
+  .node:hover .popover {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Positioning relative to the bubble */
+  /* n1 (top-right): dropdown below-left */
+  .n1 .popover { top: 115%; left: 50%; transform-origin: top left; transform: translateX(-70%) scale(0.88) translateY(-6px); }
+  .n1:hover .popover { transform: translateX(-70%) scale(1) translateY(0); }
+
+  /* n2 (top-left): dropdown below-right */
+  .n2 .popover { top: 115%; left: 50%; transform-origin: top right; transform: translateX(-30%) scale(0.88) translateY(-6px); }
+  .n2:hover .popover { transform: translateX(-30%) scale(1) translateY(0); }
+
+  /* n3 (bottom-right): dropdown above-left */
+  .n3 .popover { bottom: 115%; left: 50%; transform-origin: bottom left; transform: translateX(-70%) scale(0.88) translateY(6px); }
+  .n3:hover .popover { transform: translateX(-70%) scale(1) translateY(0); }
+
+  /* n4 (bottom-left): dropdown above-right */
+  .n4 .popover { bottom: 115%; left: 50%; transform-origin: bottom right; transform: translateX(-30%) scale(0.88) translateY(6px); }
+  .n4:hover .popover { transform: translateX(-30%) scale(1) translateY(0); }
+
+  /* Popover content styles */
+  .pop-title {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed rgba(255,255,255,0.12);
+  }
+
+  /* Signal rows */
+  .sig-row { margin-bottom: 10px; }
+  .sig-label { font-size: 11px; margin-bottom: 5px; color: #ccc; }
+  .bar-track {
+    height: 5px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease-out;
+  }
+
+  /* Terminal code block */
+  .term {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  /* Threshold bands */
+  .band {
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .band:last-child { margin-bottom: 0; }
+
+  .kw   { color: var(--cyan); }
+  .num  { color: var(--orange); }
+  .cmt  { color: var(--purple); }
+</style>
+</head>
+<body>
+
+<div id="graph">
+
+  <!-- SVG connecting lines -->
+  <svg id="lines">
+    <line x1="50%" y1="50%" x2="82%" y2="12%" class="connector" style="stroke:var(--red)"/>
+    <line x1="50%" y1="50%" x2="18%" y2="12%" class="connector" style="stroke:var(--yellow)"/>
+    <line x1="50%" y1="50%" x2="82%" y2="88%" class="connector" style="stroke:var(--orange)"/>
+    <line x1="50%" y1="50%" x2="18%" y2="88%" class="connector" style="stroke:var(--green)"/>
+  </svg>
+
+  <!-- Center bubble (hover triggers explosion) -->
+  <div class="center-bubble" id="center">
+    <h1>Severity<br>Scoring Engine</h1>
+    <p>SYS.PROCESS.TENSOR_CALC v2.4<br>// ONLINE</p>
+  </div>
+
+  <!-- ── Node 1: Input Signal Weight Matrices (top-right / red) ── -->
+  <div class="node n1">
+    ⚡ Input Signal<br>Weight Matrices
+
+    <div class="popover">
+      <div class="pop-title" style="color:var(--red)">Input Signal Weight Matrices</div>
+
+      <div class="sig-row">
+        <div class="sig-label">[SIGNAL_ALPHA] Breaches ×0.80</div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--red);box-shadow:0 0 6px var(--red)"></div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-label">[SIGNAL_BETA] Domain Flags ×0.90</div>
+        <div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--orange);box-shadow:0 0 6px var(--orange)"></div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-label">[SIGNAL_GAMMA] SMTP Risk ×0.50</div>
+        <div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--green);box-shadow:0 0 6px var(--green)"></div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-label">[SIGNAL_DELTA] Social Dorks ×0.35</div>
+        <div class="bar-track"><div class="bar-fill" style="width:35%;background:var(--cyan);box-shadow:0 0 6px var(--cyan)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Node 2: Classification Threshold Logic (top-left / yellow) ── -->
+  <div class="node n2">
+    🎯 Classification<br>Threshold Logic
+
+    <div class="popover">
+      <div class="pop-title" style="color:var(--yellow)">Classification Threshold Logic</div>
+
+      <div class="band" style="background:rgba(255,51,85,0.1);border-left:3px solid var(--red)">
+        <span style="color:var(--red);font-weight:bold">CRITICAL</span>&nbsp;&nbsp;≥ 65 SCORE
+      </div>
+      <div class="band" style="background:rgba(255,107,53,0.1);border-left:3px solid var(--orange)">
+        <span style="color:var(--orange);font-weight:bold">ELEVATED</span>&nbsp;&nbsp;30–64 SCORE
+      </div>
+      <div class="band" style="background:rgba(0,255,136,0.1);border-left:3px solid var(--green)">
+        <span style="color:var(--green);font-weight:bold">NOMINAL</span>&nbsp;&nbsp;0–29 SCORE
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Node 3: Internal Aggregation Logic (bottom-right / orange) ── -->
+  <div class="node n3">
+    🔢 Internal<br>Aggregation Logic
+
+    <div class="popover">
+      <div class="pop-title" style="color:var(--orange)">Internal Aggregation Logic</div>
+      <div class="term">
+        <span class="kw">let</span> W₁ = trace.normalize_signal(val_br) * <span class="num">0.80</span><br>
+        <span class="kw">let</span> W₂ = trace.normalize_signal(val_vt) * <span class="num">0.90</span><br>
+        <span class="kw">let</span> W₃ = trace.normalize_signal(val_em) * <span class="num">0.50</span><br>
+        <span class="kw">let</span> W₄ = trace.normalize_signal(val_so) * <span class="num">0.35</span><br><br>
+        <span class="kw">const</span> finalScore = Math.clamp(Σ(Wₙ) / βnorm × <span class="num">100</span>)<br><br>
+        <span class="cmt">// βnorm recalculated per-query to</span><br>
+        <span class="cmt">// prevent outlier saturation.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Node 4: Live Telemetry Drilldown (bottom-left / green) ── -->
+  <div class="node n4">
+    📡 Live Telemetry<br>Drilldown
+
+    <div class="popover">
+      <div class="pop-title" style="color:var(--green)">Live Telemetry Drilldown</div>
+      <div class="term">
+        &gt; QUERY DOMAIN: <span style="color:var(--cyan)">user@target.net</span><br><br>
+        SIG_A = 14 bre &nbsp;→ W₁: <span style="color:var(--green)">0.56</span><br>
+        SIG_B = 3 vt &nbsp;&nbsp;&nbsp;→ W₂: <span style="color:var(--green)">0.27</span><br>
+        SIG_C = disp &nbsp;&nbsp;&nbsp;→ W₃: <span style="color:var(--green)">0.50</span><br>
+        SIG_D = 8 dks &nbsp;→ W₄: <span style="color:var(--green)">0.21</span><br><br>
+        <strong style="color:var(--red)">Σ(1.54) ÷ β(1.9) = 81/100</strong>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /graph -->
+
+<script>
+  const graph  = document.getElementById('graph');
+  const center = document.getElementById('center');
+
+  center.addEventListener('mouseenter', () => graph.classList.add('exploded'));
+  graph.addEventListener('mouseleave',  () => graph.classList.remove('exploded'));
+</script>
+
+</body>
+</html>
