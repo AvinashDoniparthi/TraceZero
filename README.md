@@ -92,4 +92,4 @@ Navigate your browser to the local server port provided by `npx serve` (typicall
 - **`scoring_engine.html`**: A specialized sub-view specifically designed to showcase a floating, interactive bubble-force graph representation of exposure nodes (using standard vanilla JS).
 
 ---
-*Created by [Avinash Doniparthi](https://github.com/AvinashDoniparthi)*
+*Created by [Avinash Doniparthi](https://github.com/AvinashDoniparthi), Kishan Senthil, Akshith Saravanakumar*
