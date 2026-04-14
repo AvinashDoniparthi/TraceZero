@@ -3105,7 +3105,7 @@
           <div class="as-title">Attack Surface Overview</div>
           <div class="as-search">
             <span>🔍</span>
-            <input type="text" placeholder="Search..." />
+            <input type="text" id="as-search-input" onkeyup="filterAttackSurface()" placeholder="Search..." />
           </div>
         </div>
         <div class="as-table-wrapper">
@@ -3854,6 +3854,23 @@
       center.addEventListener('mouseenter', () => graph.classList.add('sse-exploded'));
       graph.addEventListener('mouseleave',  () => graph.classList.remove('sse-exploded'));
     })();
+
+    /* ── Attack Surface Search Filter ────────────────────────────────── */
+    function filterAttackSurface() {
+      const input = document.getElementById('as-search-input');
+      const filter = input.value.toLowerCase();
+      const tbody = document.getElementById('breach-list');
+      const rows = tbody.getElementsByTagName('tr');
+
+      for (let i = 0; i < rows.length; i++) {
+        let textContent = rows[i].textContent || rows[i].innerText;
+        if (textContent.toLowerCase().indexOf(filter) > -1) {
+          rows[i].style.display = "";
+        } else {
+          rows[i].style.display = "none";
+        }
+      }
+    }
   </script>
 </body>
 
