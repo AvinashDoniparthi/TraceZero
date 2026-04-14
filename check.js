@@ -1,4 +1,4 @@
-    const BASE_URL = '';
+    const BASE_URL = 'https://tracezero.onrender.com';
     let currentContext = null;
 
     // High risk tags for coloring
