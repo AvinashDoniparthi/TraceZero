@@ -41,7 +41,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
 # ── optional Gemini SDK ────────────────────────────────────────────────────────
@@ -691,14 +691,19 @@ async def serve_scoring():
     return FileResponse(html_path, media_type="text/html")
 
 
-@app.get("/", tags=["Health"])
+@app.get("/", include_in_schema=False)
 async def root():
+    return RedirectResponse(url="/ui")
+
+
+@app.get("/health", tags=["Health"])
+async def health():
     return {
         "service":  "TraceZero API",
         "status":   "running",
         "version":  "3.0.0",
-        "ui":       "http://localhost:8000/ui",
-        "docs":     "http://localhost:8000/docs",
+        "ui":       "/ui",
+        "docs":     "/docs",
         "endpoints": {
             "scan":    "GET  /scan?input=<email_or_username>",
             "analyze": "GET  /analyze?input=<email_or_username>",
