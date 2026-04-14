@@ -685,6 +685,12 @@ async def serve_ui():
     return FileResponse(html_path, media_type="text/html")
 
 
+@app.get("/scoring", tags=["UI"], include_in_schema=False)
+async def serve_scoring():
+    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scoring_engine.html")
+    return FileResponse(html_path, media_type="text/html")
+
+
 @app.get("/", tags=["Health"])
 async def root():
     return {

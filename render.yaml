@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tracezero
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: HUNTER_API_KEY
+        sync: false
+      - key: VIRUSTOTAL_API_KEY
+        sync: false
+      - key: HIBP_API_KEY
+        sync: false
+      - key: SOCIAL_SEARCHER_API_KEY
+        sync: false
